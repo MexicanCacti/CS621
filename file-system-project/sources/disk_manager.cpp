@@ -1,9 +1,5 @@
 #include "disk_manager.hpp"
 
-/*
-    Helper Function to create a chained linked-list of free blocks
-    Also initializes the queue pool for free blocks
-*/
 void DiskManager::initBlocks()
 {
     _blockMap[0] = new Block(0, 0);
@@ -39,22 +35,14 @@ unsigned int const DiskManager::getNextFreeBlock()
 
     unsigned int freeBlockNumber = rootBlock->getNextBlock();
 
-    if(freeBlockNumber == 0) return 0;
-
-    Block* freeBlock = getBlock(freeBlockNumber);
-    unsigned int nextFreeBlock = freeBlock->getNextBlock();
-    rootBlock->setNextBlock(nextFreeBlock);
-    
-    if(nextFreeBlock != 0){
-        getBlock(nextFreeBlock)->setPrevBlock(0);
-    }
-
     return freeBlockNumber;
 }
 
 STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const char& type)
 {
     if(!inBounds(blockNumber)) return ILLEGAL_ACCESS;
+    // Guarantee passed in blockNumber is the next available block
+    if(getNextFreeBlock() != blockNumber) return ILLEGAL_ACCESS;
 
     if(type == 'U'){
         delete _blockMap[blockNumber];
@@ -66,13 +54,21 @@ STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const ch
     }
     else return BAD_COMMAND;
 
+    Block* usedBlock = getBlock(blockNumber);
+    unsigned int nextFreeBlock = usedBlock->getNextBlock();
+    getBlock(0)->setNextBlock(nextFreeBlock);
+    
+    if(nextFreeBlock != 0){
+        getBlock(nextFreeBlock)->setPrevBlock(0);
+    }
+
     return SUCCESS;    
 }
 
 /*
     freeBlock() does not delete the block entry. It is only written over when
-    the free'd block number is the first in the queue and a directory or user
-    file needs to be allocated
+    the next allocation occurs & the block is the next free block
+    Free'd blocks are placed at front of linked-list of free blocks
 */
 void DiskManager::freeBlock(const unsigned int& blockNumber)
 {
@@ -82,17 +78,15 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
 
     Block* rootBlock = getBlock(0);
     while(currentBlockNumber != 0){
-        Block* freedBlock = getBlock(currentBlockNumber);
+        Block* currentBlock = getBlock(currentBlockNumber);
         unsigned int nextFreeBlock = getNextFreeBlock();
         Block* nextFree = _blockMap[nextFreeBlock];
         if(nextFreeBlock != 0){
-            
-        }
-        else{
             nextFree->setPrevBlock(currentBlockNumber);
-            rootBlock->setNextBlock(currentBlockNumber);
-            freedBlock->setPrevBlock(0);
         }
+        nextFree->setPrevBlock(currentBlockNumber);
+        rootBlock->setNextBlock(currentBlockNumber);
+        currentBlock->setPrevBlock(0);
     }
 }
 

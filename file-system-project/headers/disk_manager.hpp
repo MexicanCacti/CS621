@@ -4,7 +4,7 @@
 #include "file_block.hpp"
 #include <unordered_map>
 #include <queue>
-#include "utils/status_codes.cpp"
+#include "../utils/status_codes.cpp"
 
 class DiskManager{
     private:
@@ -27,5 +27,8 @@ class DiskManager{
         unsigned int const getNextFreeBlock();
         STATUS_CODE allocateBlock(const unsigned int& blockNumber, const char& type);
         void freeBlock(const unsigned int& blockNumber);
+        unsigned int countNumBlocks(const unsigned int& blockNumber);
+        std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
+        STATUS_CODE DWRITE(const unsigned int& blockNumber, std::string writeBuffer);
         ~DiskManager();
 };

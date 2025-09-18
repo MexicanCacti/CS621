@@ -1,5 +1,6 @@
 #include "block.hpp"
-#include <disk_manager.hpp>
+#include "disk_manager.hpp"
+#include "directory_block.hpp"
 #include "../utils/status_codes.cpp"
 #include "file_block.hpp"
 #include "root_block.hpp"
@@ -9,14 +10,14 @@
 
 
 class SystemManager{
-    private:
+    protected:
         DiskManager& _diskManager;
-        FileBlock* _lastOpened = nullptr;
-        char fileMode = 'N';
+        Entry* _lastOpened = nullptr;
+        char _fileMode = 'N';
         unsigned int _filePointer = 0;
         RootBlock* _rootBlock = nullptr;
 
-        FileBlock* findFile(std::queue<std::string> nameBuffer);
+        Entry* findFile(std::queue<std::string> nameBuffer);
         SystemManager() = delete;
     public:
         SystemManager(DiskManager& diskManager, const std::string& rootName);

@@ -2,7 +2,7 @@
 
 struct Entry {
     char TYPE;
-    char NAME [10];
+    char* NAME; // char NAME[10]?
     unsigned int LINK;
     unsigned int SIZE;
 };
@@ -12,6 +12,6 @@ class DirectoryBlock : public Block {
         Entry DIR [31];
 
     public:
-        DirectoryBlock(unsigned int next, unsigned int prev) : Block(next, prev) {};
+        DirectoryBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
         ~DirectoryBlock();
 };
