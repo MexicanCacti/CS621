@@ -1,12 +1,14 @@
+#pragma once
+
 class Block{
     protected:
-        unsigned int BACK;
-        unsigned int FRWD;
-        unsigned int FREE;
-        char _filler [4];
+        unsigned int BACK = 0;
+        unsigned int FRWD = 0;
+        unsigned int FREE = 0;
+        char _filler [4] = {0};
     public:
-        Block(unsigned int next, unsigned int prev) :
-            FRWD(next), BACK(prev) {}
+        Block(unsigned int prev, unsigned int next) :
+            BACK(prev), FRWD(next) {}
         unsigned int getPrevBlock() const {return BACK;}
         unsigned int getNextBlock() const {return FRWD;}
         void setNextBlock(unsigned int next) {FRWD = next;}

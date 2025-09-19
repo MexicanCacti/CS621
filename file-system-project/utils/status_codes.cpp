@@ -1,3 +1,4 @@
+#pragma once
 enum STATUS_CODE{
     SUCCESS,
     END_OF_FILE,

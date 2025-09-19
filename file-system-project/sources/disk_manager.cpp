@@ -1,3 +1,4 @@
+#pragma once
 #include "disk_manager.hpp"
 
 void DiskManager::initBlocks()
@@ -88,6 +89,26 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         rootBlock->setNextBlock(currentBlockNumber);
         currentBlock->setPrevBlock(0);
     }
+}
+
+unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber){
+    if(!inBounds(blockNumber)) return 0;
+    unsigned int count = 0;
+    unsigned int currentBlockNumber = blockNumber;
+    while(currentBlockNumber != 0){
+        ++count;
+        Block* currentBlock = getBlock(currentBlockNumber);
+        currentBlockNumber = currentBlock->getNextBlock();
+    }
+    return count;
+}
+
+
+std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes){
+    return {STATUS_CODE::SUCCESS, ""};
+}
+STATUS_CODE DiskManager::DWRITE(const unsigned int& blockNumber, std::string writeBuffer){
+    return STATUS_CODE::SUCCESS;
 }
 
 DiskManager::~DiskManager()

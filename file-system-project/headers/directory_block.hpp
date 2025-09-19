@@ -1,8 +1,9 @@
+#pragma once
 #include "block.hpp"
 
 struct Entry {
     char TYPE;
-    char* NAME; // char NAME[10]?
+    char NAME[10];
     unsigned int LINK;
     unsigned int SIZE;
 };

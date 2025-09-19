@@ -1,8 +1,9 @@
+#pragma once
 #include "system_manager.hpp"
 
 Entry* SystemManager::findFile(std::queue<std::string> nameBuffer)
 {
-    
+    return nullptr;
 }
 
 SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootName) :
@@ -12,27 +13,27 @@ SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootNa
 }
 STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 STATUS_CODE SystemManager::OPEN(const char& mode, const std::string nameBuffer)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 STATUS_CODE SystemManager::CLOSE()
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 STATUS_CODE SystemManager::DELETE(const std::string nameBuffer)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 std::pair<STATUS_CODE, std::string> SystemManager::READ(const int& numBytes)
 {
-
+    return {STATUS_CODE::SUCCESS, ""};
 }
 STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string writeBuffer)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
 {

@@ -1,5 +1,6 @@
 #include "test_system_manager.cpp"
 #include <iostream>
+#include <cstring>
 #include <assert.h>
 
 int main(){
@@ -8,7 +9,7 @@ int main(){
     Entry testFile;
     char testName [10] = {'t','e','s','t'};
     testFile.LINK = 1;
-    testFile.NAME = testName;
+    strcpy(testFile.NAME, testName);
     testFile.TYPE = 'U';
     testFile.SIZE = 20;
     testSystem.setFilePointer(0);
