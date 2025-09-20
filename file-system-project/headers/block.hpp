@@ -11,6 +11,6 @@ class Block{
             BACK(prev), FRWD(next) {}
         unsigned int getPrevBlock() const {return BACK;}
         unsigned int getNextBlock() const {return FRWD;}
-        void setNextBlock(unsigned int next) {FRWD = next;}
         void setPrevBlock(unsigned int prev) {BACK = prev;}
+        void setNextBlock(unsigned int next) {FRWD = next;}
 };

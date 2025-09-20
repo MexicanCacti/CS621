@@ -2,7 +2,7 @@
 #include "block.hpp"
 #include "disk_manager.hpp"
 #include "directory_block.hpp"
-#include "../utils/status_codes.cpp"
+#include "../utils/status_codes.hpp"
 #include "file_block.hpp"
 #include "root_block.hpp"
 #include <queue>
@@ -13,7 +13,7 @@ class SystemManager{
     protected:
         DiskManager& _diskManager;
         Entry* _lastOpened = nullptr;
-        char _fileMode = 'N';
+        char _fileMode = 'I';
         unsigned int _filePointer = 0;
         RootBlock* _rootBlock = nullptr;
 

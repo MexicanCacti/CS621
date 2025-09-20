@@ -5,7 +5,7 @@
 #include "file_block.hpp"
 #include <unordered_map>
 #include <string>
-#include "../utils/status_codes.cpp"
+#include "../utils/status_codes.hpp"
 
 class DiskManager{
     private:
