@@ -3,7 +3,7 @@
 
 class FileBlock : public Block {
     private:
-        char USER_DATA [504] = {0};
+        char USER_DATA [USER_DATA_SIZE] = {0};
     public:
         FileBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
 };

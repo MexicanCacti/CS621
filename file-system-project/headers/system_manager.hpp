@@ -5,7 +5,7 @@
 #include "../utils/status_codes.hpp"
 #include "file_block.hpp"
 #include "root_block.hpp"
-#include <queue>
+#include <deque>
 
 #include <string>
 
@@ -17,7 +17,8 @@ class SystemManager{
         unsigned int _filePointer = 0;
         RootBlock* _rootBlock = nullptr;
 
-        Entry* findFile(std::queue<std::string> nameBuffer);
+        std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
+        Entry* findFile(std::deque<std::string> nameBuffer);
         SystemManager() = delete;
     public:
         SystemManager(DiskManager& diskManager, const std::string& rootName);

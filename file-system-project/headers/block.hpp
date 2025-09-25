@@ -1,14 +1,16 @@
 #pragma once
+#include "constants.hpp"
 
 class Block{
     protected:
         unsigned int BACK = 0;
         unsigned int FRWD = 0;
         unsigned int FREE = 0;
-        char _filler [4] = {0};
+        char _filler [FILLER_AMOUNT] = {0};
     public:
         Block(unsigned int prev, unsigned int next) :
             BACK(prev), FRWD(next) {}
+        virtual ~Block() = default;
         unsigned int getPrevBlock() const {return BACK;}
         unsigned int getNextBlock() const {return FRWD;}
         void setPrevBlock(unsigned int prev) {BACK = prev;}
