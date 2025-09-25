@@ -14,6 +14,7 @@ std::string statusToString(STATUS_CODE code) {
         case STATUS_CODE::INVALID_NAME:   return "INVALID_NAME";
         case STATUS_CODE::BAD_FILE_MODE:  return "BAD_FILE_MODE";
         case STATUS_CODE::BAD_COMMAND:    return "BAD_COMMAND";
+        case STATUS_CODE::UNKNOWN_ERROR:  return "UNKNOWN_ERROR";
         default:                          return "UNKNOWN_STATUS_CODE";
     }
 }

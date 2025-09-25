@@ -9,6 +9,11 @@ struct Entry {
     char NAME[MAX_NAME_LENGTH + 1] = {0};
     unsigned int LINK = 0;
     unsigned int SIZE = 0;
+    Entry(const char& type, const char* name, unsigned int link) : TYPE(type), LINK(link) {
+        strncpy(NAME, name, MAX_NAME_LENGTH);
+        NAME[MAX_NAME_LENGTH] = '\0';
+    };
+    Entry() : TYPE('F'), NAME{0}, LINK(0), SIZE(0) {};
 };
 
 class DirectoryBlock : public Block {
@@ -18,5 +23,7 @@ class DirectoryBlock : public Block {
     public:
         DirectoryBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
         ~DirectoryBlock();
-        Entry* const findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager);
+        Entry* const getEntry(unsigned int& index);
+        std::pair<DirectoryBlock*, unsigned int> const findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager, const char& type);
+        STATUS_CODE addEntry(const char* name, RootBlock* rootDirectory, const char& type, DiskManager& diskManager);
 };

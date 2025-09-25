@@ -5,5 +5,5 @@ class RootBlock : public DirectoryBlock{
 
     public:
         unsigned int const getNextFreeBlock() {return FREE;}
-        void setFreeBlock(const unsigned int& blockNum) {FREE = blockNum;}
+        void setFreeBlock(const unsigned int& free) {FREE = free;}
 };
