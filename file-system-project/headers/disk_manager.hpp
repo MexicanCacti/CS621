@@ -1,8 +1,7 @@
 #pragma once
-#include "block.hpp"
-#include "root_block.hpp"
-#include "directory_block.hpp"
-#include "file_block.hpp"
+#include "../headers/block.hpp"
+#include "../headers/file_block.hpp"
+#include "../headers/root_block.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"

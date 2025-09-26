@@ -1,6 +1,6 @@
 #include "../headers/system_manager.hpp"
 
-std::deque<std::string> tokenizeString(const std::string& str, const char& delim){
+std::deque<std::string> SystemManager::tokenizeString(const std::string& str, const char& delim){
     std::deque<std::string> nameBufferQueue;
     std::string bufferCopy = str;
     size_t startPos = 0;
@@ -120,7 +120,7 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
     int seekByte = startByte + offset;
 
     if(seekByte < 0) seekByte = 0;
-    if(seekByte > lastByte) seekByte = lastByte;
+    if(static_cast<unsigned int>(seekByte) > lastByte) seekByte = lastByte;
 
     _filePointer = seekByte;
     return STATUS_CODE::SUCCESS;

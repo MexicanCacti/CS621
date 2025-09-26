@@ -1,5 +1,4 @@
 #include "../headers/directory_block.hpp"
-#include <cstring>
 
 Entry* const DirectoryBlock::getEntry(unsigned int& index)
 {
@@ -86,7 +85,7 @@ STATUS_CODE DirectoryBlock::addEntry(const char* name, RootBlock* rootDirectory,
     }
 
     // So now we need to allocate a new directory block and chain it to last FRWD
-    
+    return STATUS_CODE::SUCCESS;
 
 
 }

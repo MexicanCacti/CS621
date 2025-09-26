@@ -1,5 +1,5 @@
 #pragma once
-#include "directory_block.hpp"
+#include "../headers/directory_block.hpp"
 
 class RootBlock : public DirectoryBlock{
 

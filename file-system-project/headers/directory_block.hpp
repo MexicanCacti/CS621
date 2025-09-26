@@ -1,8 +1,11 @@
 #pragma once
 #include "block.hpp"
-#include "disk_manager.hpp"
 #include <queue>
 #include <string>
+#include <cstring>
+#include "../headers/disk_manager.hpp"
+#include "../headers/root_block.hpp"
+#include <cstring>
 
 struct Entry {
     char TYPE = 'F'; // F for file, D for Directory, U for user data file
