@@ -1,13 +1,6 @@
 #pragma once
-#include "block.hpp"
 #include "disk_manager.hpp"
-#include "directory_block.hpp"
-#include "../utils/status_codes.hpp"
-#include "file_block.hpp"
-#include "root_block.hpp"
 #include <deque>
-
-#include <string>
 
 class SystemManager{
     protected:
@@ -15,7 +8,7 @@ class SystemManager{
         Entry* _lastOpened = nullptr;
         char _fileMode = 'I';
         unsigned int _filePointer = 0;
-        RootBlock* _rootBlock = nullptr;
+        DirectoryBlock* _rootBlock = nullptr;
 
         std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
         std::pair<DirectoryBlock*, unsigned int> findFile(std::deque<std::string> nameBuffer, const char& type);

@@ -1,12 +1,7 @@
 #include "../headers/directory_block.hpp"
+#include <cstring>
 
-Entry* const DirectoryBlock::getEntry(unsigned int& index)
-{
-    if(index < 0 || index >= MAX_DIRECTORY_ENTRIES) return nullptr;
-    return &DIR[index];
-}
-
-std::pair<DirectoryBlock*, unsigned int> const DirectoryBlock::findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager, const char& type)
+std::pair<DirectoryBlock*, unsigned int> const DirectoryBlock::findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager)
 {
     if(nameBuffer.empty()) return {nullptr, 0};
     std::string currentName = nameBuffer.front();

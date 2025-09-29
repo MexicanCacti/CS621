@@ -2,12 +2,10 @@
 #include "constants.hpp"
 #include "../utils/status_codes.hpp"
 
-class Block{
+class Block {
     protected:
         unsigned int BACK = 0;
         unsigned int FRWD = 0;
-        unsigned int FREE = 0;
-        char _filler [FILLER_AMOUNT] = {0};
     public:
         Block(unsigned int prev, unsigned int next) :
             BACK(prev), FRWD(next) {}

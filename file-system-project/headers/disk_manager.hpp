@@ -1,7 +1,8 @@
 #pragma once
-#include "../headers/block.hpp"
-#include "../headers/file_block.hpp"
-#include "../headers/root_block.hpp"
+#include "block.hpp"
+#include "root_block.hpp"
+#include "directory_block.hpp"
+#include "file_block.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"
@@ -12,7 +13,6 @@ class DiskManager{
         int _blockSize = 0;
         int _userDataSize = 0;
         std::unordered_map<unsigned int, Block*> _blockMap;
-        RootBlock* _rootBlock = nullptr;
 
         DiskManager() = delete;
         void initBlocks();
@@ -25,7 +25,7 @@ class DiskManager{
         Block* const getBlock(const unsigned int& blockNumber);
         int const getBlockCount() { return _numBlocks;}
         int const getBlockSize() { return _blockSize;}
-        STATUS_CODE allocateBlock(const char& type);
+        STATUS_CODE allocateBlock(const unsigned int, const char& type);
         void freeBlock(const unsigned int& blockNumber);
         unsigned int countNumBlocks(const unsigned int& blockNumber);
         unsigned int const getLastBlock(const unsigned int& blockNumber);
