@@ -1,6 +1,5 @@
 #pragma once
 #include "block.hpp"
-#include "disk_manager.hpp"
 #include <queue>
 #include <string>
 
@@ -20,5 +19,6 @@ class DirectoryBlock : public Block {
     public:
         DirectoryBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
         ~DirectoryBlock();
-        Entry* const findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager);
+        Entry* const findFile(std::deque<std::string>& nameBuffer);
+        Entry* const getDir() {return DIR;};
 };

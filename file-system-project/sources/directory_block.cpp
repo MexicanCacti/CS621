@@ -1,52 +1,6 @@
 #include "../headers/directory_block.hpp"
 #include <cstring>
 
-std::pair<DirectoryBlock*, unsigned int> const DirectoryBlock::findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager)
-{
-    if(nameBuffer.empty()) return {nullptr, 0};
-    std::string currentName = nameBuffer.front();
-    nameBuffer.pop_front();
-
-    for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i){
-        if(DIR[i].TYPE == 'F') continue;
-
-        if(strncmp(DIR[i].NAME, currentName.c_str(), 9) == 0){
-            if(nameBuffer.empty() && DIR[i].TYPE == type) return {this, i};
-            if(DIR[i].TYPE != 'D') continue;
-            Block* directoryBlock = diskManager.getBlock(DIR[i].LINK);
-            if(!directoryBlock) return {nullptr, 0};
-            DirectoryBlock* searchDirectory = dynamic_cast<DirectoryBlock*>(directoryBlock);
-            if(!searchDirectory) return {nullptr, 0};
-            return searchDirectory->findFile(nameBuffer, diskManager, type);
-        }
-    }
-
-    // No match in this directory block, check next block in FRWD chain
-    Block* currentBlock = this;
-    while(currentBlock->getNextBlock() != 0){
-        currentBlock = diskManager.getBlock(currentBlock->getNextBlock());
-        if(!currentBlock) return {nullptr, 0};
-        DirectoryBlock* nextDirBlock = dynamic_cast<DirectoryBlock*>(currentBlock);
-        if(!nextDirBlock) return {nullptr, 0};
-        for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i){
-            if(nextDirBlock->DIR[i].TYPE == 'F') continue;
-
-            if(strncmp(nextDirBlock->DIR[i].NAME, currentName.c_str(), 9) == 0){
-                if(nameBuffer.empty() && nextDirBlock->DIR[i].TYPE == type) return {nextDirBlock, i};
-                if(nextDirBlock->DIR[i].TYPE != 'D') continue;
-                Block* directoryBlock = diskManager.getBlock(nextDirBlock->DIR[i].LINK);
-                if(!directoryBlock) return {nullptr, 0};
-                DirectoryBlock* searchDirectory = dynamic_cast<DirectoryBlock*>(directoryBlock);
-                if(!searchDirectory) return {nullptr, 0};
-                return searchDirectory->findFile(nameBuffer, diskManager, type);
-            }
-        }
-        if(nextDirBlock->FRWD == 0) break;
-    }
-
-    return {nullptr, 0};
-}
-
 STATUS_CODE DirectoryBlock::addEntry(const char* name, RootBlock* rootDirectory, const char& type, DiskManager& diskManager)
 {
     unsigned int nextFreeBlock = rootDirectory->getNextFreeBlock();

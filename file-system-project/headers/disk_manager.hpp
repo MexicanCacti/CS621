@@ -1,8 +1,8 @@
 #pragma once
-#include "block.hpp"
-#include "root_block.hpp"
-#include "directory_block.hpp"
-#include "file_block.hpp"
+#include "../headers/block.hpp"
+#include "../headers/directory_block.hpp"
+#include "../headers/user_data_block.hpp"
+#include "../headers/disk_searcher.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"
@@ -13,6 +13,8 @@ class DiskManager{
         int _blockSize = 0;
         int _userDataSize = 0;
         std::unordered_map<unsigned int, Block*> _blockMap;
+        DiskSearcher _diskSearcher;
+
 
         DiskManager() = delete;
         void initBlocks();
@@ -32,5 +34,6 @@ class DiskManager{
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
         STATUS_CODE DWRITE(const unsigned int& blockNumber, std::string writeBuffer);
 
+        SearchResult findFile(std::deque<std::string>& nameBuffer) {return _diskSearcher.findFile(nameBuffer);}
         ~DiskManager();
 };

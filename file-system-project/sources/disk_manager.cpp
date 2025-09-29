@@ -21,6 +21,7 @@ DiskManager::DiskManager(const int& numBlocks,
     _blockSize = blockSize;
     _userDataSize = userDataSize;
     initBlocks();
+    _diskSearcher = DiskSearcher(_blockMap);
 }
 
 Block* const DiskManager::getBlock(const unsigned int& blockNumber)
@@ -90,6 +91,8 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         currentBlockNumber = currentBlock->getNextBlock();
     }
 }
+
+
 
 unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber)
 {
