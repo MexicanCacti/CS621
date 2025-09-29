@@ -21,6 +21,4 @@ class DirectoryBlock : public Block {
         DirectoryBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
         ~DirectoryBlock();
         Entry* const findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager);
-        unsigned int const getNextFreeBlock() {return FREE;}
-        void setFreeBlock(const unsigned int& blockNum) {FREE = blockNum;}
 };

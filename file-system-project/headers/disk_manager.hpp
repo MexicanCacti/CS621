@@ -1,7 +1,8 @@
 #pragma once
 #include "block.hpp"
-#include "../headers/directory_block.hpp"
-#include "../headers/user_data_block.hpp"
+#include "root_block.hpp"
+#include "directory_block.hpp"
+#include "file_block.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"
@@ -24,10 +25,10 @@ class DiskManager{
         Block* const getBlock(const unsigned int& blockNumber);
         int const getBlockCount() { return _numBlocks;}
         int const getBlockSize() { return _blockSize;}
-        unsigned int const getNextFreeBlock();
-        STATUS_CODE allocateBlock(const unsigned int& blockNumber, const char& type);
+        STATUS_CODE allocateBlock(const unsigned int, const char& type);
         void freeBlock(const unsigned int& blockNumber);
         unsigned int countNumBlocks(const unsigned int& blockNumber);
+        unsigned int const getLastBlock(const unsigned int& blockNumber);
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
         STATUS_CODE DWRITE(const unsigned int& blockNumber, std::string writeBuffer);
 

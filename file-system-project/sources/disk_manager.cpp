@@ -5,7 +5,7 @@ void DiskManager::initBlocks()
     if(_numBlocks < 1) return;
 
     _blockMap[0] = new Block(0, 1);
-    
+
     for(int i = 1 ; i < _numBlocks; ++i){
         _blockMap[i] = new Block(i - 1, i + 1);
     }
@@ -36,7 +36,7 @@ unsigned int const DiskManager::getNextFreeBlock()
     return _blockMap[0]->getNextBlock();
 }
 
-STATUS_CODE DiskManager::allocateBlock(const char& type)
+STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const char& type)
 {
     if(_blockMap[0]->getNextBlock() == 0) return STATUS_CODE::OUT_OF_MEMORY;
 
@@ -64,8 +64,6 @@ STATUS_CODE DiskManager::allocateBlock(const char& type)
     dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(_blockMap[0]->getNextBlock());
     return STATUS_CODE::SUCCESS;
 }
-
-/*
 
 /*
     freeBlock() does not delete the block entry. It is only written over when
@@ -106,6 +104,17 @@ unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber)
     return count;
 }
 
+unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
+{
+    if(!inBounds(blockNumber)) return 0;
+    unsigned int lastBlockNumber = blockNumber;
+    Block* currentBlock = getBlock(lastBlockNumber);
+    while(currentBlock->getNextBlock() != 0){
+        lastBlockNumber = currentBlock->getNextBlock();
+        currentBlock = getBlock(lastBlockNumber);
+    }
+    return lastBlockNumber;
+}
 
 std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes)
 {
