@@ -1,8 +1,7 @@
 #include "../headers/directory_block.hpp"
 #include <cstring>
 
-Entry* const DirectoryBlock::findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager)
-{
+Entry* const DirectoryBlock::findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager){
     if(nameBuffer.empty()) return nullptr;
     std::string currentName = nameBuffer.front();
     nameBuffer.pop_front();

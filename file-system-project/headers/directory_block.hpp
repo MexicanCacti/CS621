@@ -13,10 +13,14 @@ struct Entry {
 
 class DirectoryBlock : public Block {
     private:
+        unsigned int FREE = 0;
+        char filler [FILLER_AMOUNT] = {0};
         Entry DIR [MAX_DIRECTORY_ENTRIES] = {Entry()};
 
     public:
         DirectoryBlock(unsigned int prev, unsigned int next) : Block(prev, next) {};
         ~DirectoryBlock();
         Entry* const findFile(std::deque<std::string>& nameBuffer, DiskManager& diskManager);
+        unsigned int const getNextFreeBlock() {return FREE;}
+        void setFreeBlock(const unsigned int& blockNum) {FREE = blockNum;}
 };

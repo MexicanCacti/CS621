@@ -36,32 +36,36 @@ unsigned int const DiskManager::getNextFreeBlock()
     return _blockMap[0]->getNextBlock();
 }
 
-STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const char& type)
+STATUS_CODE DiskManager::allocateBlock(const char& type)
 {
-    if(!inBounds(blockNumber)) return ILLEGAL_ACCESS;
-    // Guarantee passed in blockNumber is the next available block
-    if(getNextFreeBlock() != blockNumber) return ILLEGAL_ACCESS;
+    if(_blockMap[0]->getNextBlock() == 0) return STATUS_CODE::OUT_OF_MEMORY;
 
-    unsigned int nextFreeBlock = _blockMap[blockNumber]->getNextBlock();
+    // Take free block out of list
+    unsigned int nextFreeBlock = _blockMap[0]->getNextBlock();
+    _blockMap[0]->setNextBlock(_blockMap[nextFreeBlock]->getNextBlock());
+    _blockMap[_blockMap[0]->getNextBlock()]->setPrevBlock(0);
 
-    if(_blockMap[blockNumber]) delete _blockMap[blockNumber];
+    if(_blockMap[nextFreeBlock]) delete _blockMap[nextFreeBlock];
 
     if(type == 'U'){
-        _blockMap[blockNumber] = new FileBlock(0, 0);
+        _blockMap[nextFreeBlock] = new UserDataBlock(0, 0);
     }
     else if(type == 'D'){
-        _blockMap[blockNumber] = new DirectoryBlock(0, 0);
+        _blockMap[nextFreeBlock] = new DirectoryBlock(0, 0);
     }
-    else return BAD_COMMAND;
-
-    _blockMap[0]->setNextBlock(nextFreeBlock);
-    
-    if(nextFreeBlock != 0){
-        getBlock(nextFreeBlock)->setPrevBlock(0);
+    else{
+        // Put freeBlock back into list
+        _blockMap[nextFreeBlock]->setNextBlock(_blockMap[0]->getNextBlock());
+        _blockMap[_blockMap[0]->getNextBlock()]->setPrevBlock(nextFreeBlock);
+        _blockMap[0]->setNextBlock(nextFreeBlock);
+        _blockMap[nextFreeBlock]->setPrevBlock(0);
+        return STATUS_CODE::BAD_COMMAND;
     }
-
-    return SUCCESS;    
+    dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(_blockMap[0]->getNextBlock());
+    return STATUS_CODE::SUCCESS;
 }
+
+/*
 
 /*
     freeBlock() does not delete the block entry. It is only written over when
