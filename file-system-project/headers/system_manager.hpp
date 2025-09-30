@@ -11,7 +11,6 @@ class SystemManager{
         DirectoryBlock* _rootBlock = nullptr;
 
         std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
-        std::pair<DirectoryBlock*, unsigned int> findFile(std::deque<std::string> nameBuffer, const char& type);
         SystemManager() = delete;
     public:
         SystemManager(DiskManager& diskManager, const std::string& rootName);

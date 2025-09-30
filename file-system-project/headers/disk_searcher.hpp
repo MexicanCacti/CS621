@@ -3,10 +3,9 @@
 
 class DiskSearcher{
     private:
-        std::unordered_map<unsigned int, Block*>* _blockMap;
+        DiskManager& _diskManager;
 
     public:
-        DiskSearcher() = default;
-        DiskSearcher(std::unordered_map<unsigned int, Block*>& blockMap) : _blockMap(&blockMap) {}
+        DiskSearcher(DiskManager& diskManager) : _diskManager(diskManager) {}
         SearchResult const findFile(std::deque<std::string>& nameBuffer);
 };

@@ -15,11 +15,6 @@ std::deque<std::string> SystemManager::tokenizeString(const std::string& str, co
     return nameBufferQueue;
 }
 
-std::pair<DirectoryBlock*, unsigned int> SystemManager::findFile(std::deque<std::string> nameBuffer, const char& type)
-{
-    return _rootBlock->findFile(nameBuffer, _diskManager, type);
-}
-
 SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootName) :
                 _diskManager(diskManager)
 {
@@ -31,11 +26,17 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
     if(type != 'U' && type != 'D') return STATUS_CODE::INVALID_TYPE;
     std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
     std::string fileName = nameBufferQueue.back();
-    std::pair<DirectoryBlock*, unsigned int> dir_and_index = findFile(nameBufferQueue, type);
-    
-    const unsigned int nextFreeBlock = _rootBlock->getNextFreeBlock();
-    if(nextFreeBlock == 0) return STATUS_CODE::OUT_OF_MEMORY;
+    SearchResult searchResult = _diskManager.findFile(nameBufferQueue);
+    STATUS_CODE status = searchResult.statusCode;
+    DirectoryBlock* parentDir = searchResult.directory;
+    unsigned int entryIndex = searchResult.entryIndex;
 
+    // Found file with same name
+    if(status == SUCCESS) _diskManager.freeBlock(parentDir->getDir()[entryIndex].LINK);
+
+    _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
+
+    /*
     if(!dir_and_index.first){
        // Search for next free entry in root directory & place 
         STATUS_CODE status = _rootBlock->addEntry(fileName.c_str(), _rootBlock, type, _diskManager);
@@ -51,6 +52,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
         strncpy(dir_and_index.first->getEntry(dir_and_index.second)->NAME, fileName.c_str(), MAX_NAME_LENGTH);
         dir_and_index.first->getEntry(dir_and_index.second)->NAME[MAX_NAME_LENGTH] = '\0';
     }
+    */
     
     return STATUS_CODE::SUCCESS;
 }
@@ -59,14 +61,19 @@ STATUS_CODE SystemManager::OPEN(const char& mode, const std::string nameBuffer)
 {
     std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
 
-    std::pair<DirectoryBlock*, unsigned int> dir_and_index = findFile(nameBufferQueue, 'U');
-    if(!dir_and_index.first) return STATUS_CODE::NO_FILE_FOUND;
-    _lastOpened = dir_and_index.first->getEntry(dir_and_index.second);
+    SearchResult searchResult = _diskManager.findFile(nameBufferQueue);
+    STATUS_CODE status = searchResult.statusCode;
+    DirectoryBlock* parentDir = searchResult.directory;
+    unsigned int entryIndex = searchResult.entryIndex;
+    if(!parentDir) return STATUS_CODE::NO_FILE_FOUND;
+
+    _lastOpened = &parentDir->getDir()[entryIndex];
     _fileMode = mode;
     if(mode == 'I' || mode == 'U') _filePointer = 0;
     else{
-        // pointer to last byte in file
-        _filePointer = _lastOpened->SIZE - 1;
+        //_lastOpened SIZE should have Bytes used in last block!
+        // So then when lastOpened is written to @ last block, need to update SIZE for all previously linked blocks!
+        _filePointer = _diskManager.countNumBlocks(_lastOpened->LINK) * 504 - (504 - _lastOpened->SIZE);
     }
 
     return STATUS_CODE::SUCCESS;
@@ -82,9 +89,13 @@ STATUS_CODE SystemManager::CLOSE()
 STATUS_CODE SystemManager::DELETE(const std::string nameBuffer)
 {
     std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
-    std::pair<DirectoryBlock*, unsigned int> dir_and_index = findFile(nameBufferQueue, 'U');
-    if(!dir_and_index.first) return STATUS_CODE::NO_FILE_FOUND;
-    Entry* toDelete = dir_and_index.first->getEntry(dir_and_index.second);
+    SearchResult searchResult = _diskManager.findFile(nameBufferQueue);
+    STATUS_CODE status = searchResult.statusCode;
+    DirectoryBlock* parentDir = searchResult.directory;
+    unsigned int entryIndex = searchResult.entryIndex;
+
+    if(!parentDir) return STATUS_CODE::NO_FILE_FOUND;
+    Entry* toDelete = &parentDir->getDir()[entryIndex];
     _diskManager.freeBlock(toDelete->LINK);
     toDelete->TYPE = 'F';
     return STATUS_CODE::SUCCESS;

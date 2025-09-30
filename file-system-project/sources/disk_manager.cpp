@@ -16,14 +16,16 @@ void DiskManager::initBlocks()
 DiskManager::DiskManager(const int& numBlocks, 
                 const int& blockSize, 
                 const int& userDataSize)
+    : _numBlocks(numBlocks),
+      _blockSize(blockSize),
+      _userDataSize(userDataSize),
+      _diskSearcher(*this),
+      _diskWriter(*this)
 {
-    _numBlocks = numBlocks;
-    _blockSize = blockSize;
-    _userDataSize = userDataSize;
     initBlocks();
-    _diskSearcher = DiskSearcher(_blockMap);
 }
 
+// NOTE: MAYBE NOT NEEDED
 Block* const DiskManager::getBlock(const unsigned int& blockNumber)
 {
     if(!inBounds(blockNumber)) return nullptr;
@@ -31,39 +33,44 @@ Block* const DiskManager::getBlock(const unsigned int& blockNumber)
     return _blockMap[blockNumber];
 }
 
-unsigned int const DiskManager::getNextFreeBlock()
-{ 
-    if(!_blockMap[0]) return 0;
-    return _blockMap[0]->getNextBlock();
+int findFreeEntry(DirectoryBlock* const directory)
+{
+    Entry* entries = directory->getDir();
+    for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i){
+        if(entries[i].TYPE == 'F') return i;
+    }
+
+    return -1;
 }
 
-STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const char& type)
+// Note, whenever allocate a block number, always free
+// Maybe have a public function for deleting a block?
+std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type)
 {
-    if(_blockMap[0]->getNextBlock() == 0) return STATUS_CODE::OUT_OF_MEMORY;
+    DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
+    if(!rootBlock) return {STATUS_CODE::UNKNOWN_ERROR, 0};
+    if(type != 'U' && type != 'D') return {STATUS_CODE::INVALID_TYPE, 0};
 
-    // Take free block out of list
-    unsigned int nextFreeBlock = _blockMap[0]->getNextBlock();
-    _blockMap[0]->setNextBlock(_blockMap[nextFreeBlock]->getNextBlock());
-    _blockMap[_blockMap[0]->getNextBlock()]->setPrevBlock(0);
+    unsigned int freeBlockNumber = rootBlock->getFreeBlock();
+    if(freeBlockNumber == 0) return {STATUS_CODE::OUT_OF_MEMORY, 0};
 
-    if(_blockMap[nextFreeBlock]) delete _blockMap[nextFreeBlock];
+    Block* freeBlock = _blockMap[freeBlockNumber];
+
+    unsigned int nextFreeBlockNumber = freeBlock->getNextBlock();
+    rootBlock->setFreeBlock(nextFreeBlockNumber);
+    if(nextFreeBlockNumber != 0) _blockMap[nextFreeBlockNumber]->setPrevBlock(0);
+
+    freeBlock->setNextBlock(0);
+    freeBlock->setPrevBlock(0);
 
     if(type == 'U'){
-        _blockMap[nextFreeBlock] = new UserDataBlock(0, 0);
+        _blockMap[freeBlockNumber] = new UserDataBlock(0, 0);
     }
     else if(type == 'D'){
-        _blockMap[nextFreeBlock] = new DirectoryBlock(0, 0);
+        _blockMap[freeBlockNumber] = new DirectoryBlock(0, 0);
     }
-    else{
-        // Put freeBlock back into list
-        _blockMap[nextFreeBlock]->setNextBlock(_blockMap[0]->getNextBlock());
-        _blockMap[_blockMap[0]->getNextBlock()]->setPrevBlock(nextFreeBlock);
-        _blockMap[0]->setNextBlock(nextFreeBlock);
-        _blockMap[nextFreeBlock]->setPrevBlock(0);
-        return STATUS_CODE::BAD_COMMAND;
-    }
-    dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(_blockMap[0]->getNextBlock());
-    return STATUS_CODE::SUCCESS;
+    
+    return {STATUS_CODE::SUCCESS, freeBlockNumber};
 }
 
 /*
@@ -73,36 +80,41 @@ STATUS_CODE DiskManager::allocateBlock(const unsigned int& blockNumber, const ch
 */
 void DiskManager::freeBlock(const unsigned int& blockNumber)
 {
-    if(!inBounds(blockNumber)) return;
+    if(!inBounds(blockNumber) || blockNumber == 0) return;
 
     unsigned int currentBlockNumber = blockNumber;
+    DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
+    if(!rootBlock) return;
 
-    Block* rootBlock = getBlock(0);
     while(currentBlockNumber != 0){
-        Block* currentBlock = getBlock(currentBlockNumber);
-        unsigned int nextFreeBlock = getNextFreeBlock();
-        Block* nextFree = _blockMap[nextFreeBlock];
-        if(nextFreeBlock != 0){
-            nextFree->setPrevBlock(currentBlockNumber);
-        }
-        nextFree->setPrevBlock(currentBlockNumber);
-        rootBlock->setNextBlock(currentBlockNumber);
+        Block* currentBlock = _blockMap[blockNumber];
+        unsigned int chainedBlockNumber = currentBlock->getNextBlock();
+
+        unsigned int oldFreeNumber = rootBlock->getFreeBlock();
+        currentBlock->setNextBlock(oldFreeNumber);
         currentBlock->setPrevBlock(0);
-        currentBlockNumber = currentBlock->getNextBlock();
+
+        if(oldFreeNumber != 0){
+            Block* oldFreeBlock = _blockMap[oldFreeNumber];
+            oldFreeBlock->setPrevBlock(currentBlockNumber);
+        }
+
+        rootBlock->setFreeBlock(currentBlockNumber);
+        currentBlockNumber = chainedBlockNumber;
     }
 }
-
-
 
 unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber)
 {
     if(!inBounds(blockNumber)) return 0;
-    unsigned int count = 0;
-    unsigned int currentBlockNumber = blockNumber;
-    while(currentBlockNumber != 0){
+    unsigned int count = 1;
+    unsigned int lastBlockNumber = blockNumber;
+    Block* currentBlock = getBlock(lastBlockNumber);
+    
+    while(currentBlock->getNextBlock() != 0){
+        lastBlockNumber = currentBlock->getNextBlock();
+        currentBlock = getBlock(lastBlockNumber);
         ++count;
-        Block* currentBlock = getBlock(currentBlockNumber);
-        currentBlockNumber = currentBlock->getNextBlock();
     }
     return count;
 }
@@ -112,6 +124,7 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
     if(!inBounds(blockNumber)) return 0;
     unsigned int lastBlockNumber = blockNumber;
     Block* currentBlock = getBlock(lastBlockNumber);
+    
     while(currentBlock->getNextBlock() != 0){
         lastBlockNumber = currentBlock->getNextBlock();
         currentBlock = getBlock(lastBlockNumber);
@@ -119,14 +132,24 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
     return lastBlockNumber;
 }
 
-std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes)
+// Write any block to disk
+STATUS_CODE DWRITE(unsigned int blockNum, Block* blockPtr)
 {
-    return {STATUS_CODE::SUCCESS, ""};
+    
 }
-STATUS_CODE DiskManager::DWRITE(const unsigned int& blockNumber, std::string writeBuffer)
+
+// Add/update entry
+STATUS_CODE DWRITE(DirectoryBlock* directory, unsigned int entryIndex, const char* name, char type)
 {
-    return STATUS_CODE::SUCCESS;
+
 }
+
+// Write user data
+STATUS_CODE DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes)
+{
+
+}
+
 
 DiskManager::~DiskManager()
 {

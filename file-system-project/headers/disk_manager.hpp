@@ -3,6 +3,7 @@
 #include "../headers/directory_block.hpp"
 #include "../headers/user_data_block.hpp"
 #include "../headers/disk_searcher.hpp"
+#include "../headers/disk_writer.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"
@@ -14,12 +15,14 @@ class DiskManager{
         int _userDataSize = 0;
         std::unordered_map<unsigned int, Block*> _blockMap;
         DiskSearcher _diskSearcher;
+        DiskWriter _diskWriter;
 
 
         DiskManager() = delete;
         void initBlocks();
         bool const inBounds(const int& blockNumber) 
-            {return blockNumber > 0 && blockNumber <= _numBlocks;}
+            {return blockNumber >= 0 && blockNumber <= _numBlocks;}
+        int findFreeEntry(DirectoryBlock* const directory);
     public:
         DiskManager(const int& numBlocks, 
             const int& blockSize, 
@@ -27,13 +30,20 @@ class DiskManager{
         Block* const getBlock(const unsigned int& blockNumber);
         int const getBlockCount() { return _numBlocks;}
         int const getBlockSize() { return _blockSize;}
-        STATUS_CODE allocateBlock(const unsigned int, const char& type);
+        std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type);
         void freeBlock(const unsigned int& blockNumber);
         unsigned int countNumBlocks(const unsigned int& blockNumber);
         unsigned int const getLastBlock(const unsigned int& blockNumber);
+        unsigned int const getNextFreeBlock() {return dynamic_cast<DirectoryBlock*>(_blockMap[0])->getFreeBlock();}
+        void const setNextFreeBlock(const unsigned int& blockNum) {dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(blockNum);}
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
-        STATUS_CODE DWRITE(const unsigned int& blockNumber, std::string writeBuffer);
+        STATUS_CODE DWRITE(unsigned int blockNum, Block* blockPtr);        // Write any block to disk
+        STATUS_CODE DWRITE(DirectoryBlock* directory, unsigned int entryIndex, const char* name, char type); // Add/update entry
+        STATUS_CODE DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes); // Write user data
+
 
         SearchResult findFile(std::deque<std::string>& nameBuffer) {return _diskSearcher.findFile(nameBuffer);}
         ~DiskManager();
+    friend class DiskSearcher;
+    friend class DiskWriter;
 };

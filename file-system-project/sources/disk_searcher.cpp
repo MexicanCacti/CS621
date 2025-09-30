@@ -1,43 +1,38 @@
 #include "../headers/disk_searcher.hpp"
 
-SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer)
-{
-    if(nameBuffer.empty()) return SearchResult(BAD_COMMAND, nullptr, 0);
-    std::string currentName = nameBuffer.front();
-    nameBuffer.pop_front();
-    DirectoryBlock* searchDirectory = dynamic_cast<DirectoryBlock*>(_blockMap->at(0));
-    Entry* entries = searchDirectory->getDir();
+SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
+    if(nameBuffer.empty()) return {BAD_COMMAND, nullptr, 0};
 
-    for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i){
-        if(entries[i].TYPE == 'F') continue;
+    DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(0));
+    if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
 
-        if(strncmp(entries[i].NAME, currentName.c_str(), 9) == 0){
-            if(nameBuffer.empty()) return SearchResult(SUCCESS, searchDirectory, i);
-            if(entries[i].TYPE != 'D') continue;
-            unsigned int nextSearchDirectory = entries[i].LINK;
-            searchDirectory = dynamic_cast<DirectoryBlock*>((*_blockMap)[nextSearchDirectory]);
-            if(!searchDirectory) return SearchResult(ILLEGAL_ACCESS, nullptr, 0);
-            return searchDirectory->findFile(nameBuffer);
-        }
-    }
+    while(!nameBuffer.empty()) {
+        std::string currentName = nameBuffer.front();
+        bool found = false;
 
-    while(searchDirectory->getNextBlock() != 0){
-        searchDirectory = dynamic_cast<DirectoryBlock*>((*_blockMap)[searchDirectory->getNextBlock()]);
-        if(!searchDirectory) return SearchResult(ILLEGAL_ACCESS, nullptr, 0);
-        entries = searchDirectory->getDir();
-        for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i){
-            if(entries[i].TYPE == 'F') continue;
+        for(DirectoryBlock* dir = currentDir; 
+            dir != nullptr; 
+            dir = (dir->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(dir->getNextBlock())) : nullptr) 
+        {
 
-            if(strncmp(entries[i].NAME, currentName.c_str(), 9) == 0){
-                if(nameBuffer.empty()) return SearchResult(SUCCESS, searchDirectory, i);
-                if(entries[i].TYPE != 'D') continue;
-                unsigned int nextSearchDirectory = entries[i].LINK;
-                searchDirectory = dynamic_cast<DirectoryBlock*>((*_blockMap)[nextSearchDirectory]);
-                if(!searchDirectory) return SearchResult(ILLEGAL_ACCESS, nullptr, 0);
-                return searchDirectory->findFile(nameBuffer);
+            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+                Entry& e = dir->getDir()[i];
+                if(e.TYPE != 'F' && strncmp(e.NAME, currentName.c_str(), MAX_NAME_LENGTH - 1) == 0) {
+                    nameBuffer.pop_front();
+                    if(nameBuffer.empty()) return {SUCCESS, dir, i};
+                    if(e.TYPE == 'D') {
+                        currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap[e.LINK]);
+                        if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
+                        found = true;
+                        break;
+                    }
+                }
             }
+            if(found) break;
         }
+
+        if(!found) return {NO_FILE_FOUND, nullptr, 0};
     }
 
-    return SearchResult(NO_FILE_FOUND, nullptr, 0);
+    return {NO_FILE_FOUND, nullptr, 0};
 }

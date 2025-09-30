@@ -10,4 +10,8 @@ const unsigned int MAX_NAME_LENGTH = 9;
 const char PATH_DELIMITER = '/';
 
 // Searching gives: { STATUS_CODE of the search, { DirectoryBlock pointer, index in DIR array } }
-using SearchResult = std::pair<STATUS_CODE, std::pair<DirectoryBlock*, unsigned int>>;
+struct SearchResult {
+    STATUS_CODE statusCode;
+    DirectoryBlock* directory;
+    unsigned int entryIndex;
+};
