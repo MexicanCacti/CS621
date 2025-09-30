@@ -13,3 +13,5 @@ STATUS_CODE DirectoryBlock::addEntry(const char* name, const char& type, const u
     DIR[entryIndex].NAME[MAX_NAME_LENGTH] = '\0';
     return STATUS_CODE::SUCCESS;
 }
+
+DirectoryBlock::~DirectoryBlock() = default;

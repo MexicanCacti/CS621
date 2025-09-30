@@ -2,11 +2,13 @@
 #include "../headers/block.hpp"
 #include "../headers/directory_block.hpp"
 #include "../headers/user_data_block.hpp"
-#include "../headers/disk_searcher.hpp"
-#include "../headers/disk_writer.hpp"
 #include <unordered_map>
 #include <string>
 #include "../utils/status_codes.hpp"
+#include "../utils/search_result.hpp"
+
+class DiskSearcher;
+class DiskWriter;
 
 class DiskManager{
     private:
@@ -14,8 +16,8 @@ class DiskManager{
         int _blockSize = 0;
         int _userDataSize = 0;
         std::unordered_map<unsigned int, Block*> _blockMap;
-        DiskSearcher _diskSearcher;
-        DiskWriter _diskWriter;
+        DiskSearcher* _diskSearcher;
+        DiskWriter* _diskWriter;
 
 
         DiskManager() = delete;
@@ -30,7 +32,7 @@ class DiskManager{
         Block* const getBlock(const unsigned int& blockNumber);
         int const getBlockCount() { return _numBlocks;}
         int const getBlockSize() { return _blockSize;}
-        std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type);
+        std::pair<STATUS_CODE, unsigned int> allocateBlock(const char& type);
         void freeBlock(const unsigned int& blockNumber);
         unsigned int countNumBlocks(const unsigned int& blockNumber);
         unsigned int const getLastBlock(const unsigned int& blockNumber);
@@ -42,7 +44,7 @@ class DiskManager{
         STATUS_CODE DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes); // Write user data
 
 
-        SearchResult findFile(std::deque<std::string>& nameBuffer) {return _diskSearcher.findFile(nameBuffer);}
+        SearchResult findFile(std::deque<std::string>& nameBuffer);
         ~DiskManager();
     friend class DiskSearcher;
     friend class DiskWriter;

@@ -1,4 +1,5 @@
 #include "../headers/disk_searcher.hpp"
+#include "../headers/disk_manager.hpp"
 
 SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
     if(nameBuffer.empty()) return {BAD_COMMAND, nullptr, 0};

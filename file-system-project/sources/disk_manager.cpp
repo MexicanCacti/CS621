@@ -1,16 +1,22 @@
 #include "../headers/disk_manager.hpp"
+#include "../headers/disk_searcher.hpp"
+#include "../headers/disk_writer.hpp"
 
 void DiskManager::initBlocks()
 {
     if(_numBlocks < 1) return;
 
-    _blockMap[0] = new Block(0, 1);
+    _blockMap[0] = new DirectoryBlock(0, 1);
 
     for(int i = 1 ; i < _numBlocks; ++i){
         _blockMap[i] = new Block(i - 1, i + 1);
     }
 
     _blockMap[_numBlocks] = new Block(_numBlocks - 1, 0);
+
+    DirectoryBlock* root = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
+    root->setFreeBlock(1);
+
 }
 
 DiskManager::DiskManager(const int& numBlocks, 
@@ -19,10 +25,12 @@ DiskManager::DiskManager(const int& numBlocks,
     : _numBlocks(numBlocks),
       _blockSize(blockSize),
       _userDataSize(userDataSize),
-      _diskSearcher(*this),
-      _diskWriter(*this)
+      _diskSearcher(nullptr),
+      _diskWriter(nullptr)
 {
     initBlocks();
+    _diskSearcher = new DiskSearcher(*this);
+    _diskWriter = new DiskWriter(*this);
 }
 
 // NOTE: MAYBE NOT NEEDED
@@ -33,7 +41,7 @@ Block* const DiskManager::getBlock(const unsigned int& blockNumber)
     return _blockMap[blockNumber];
 }
 
-int findFreeEntry(DirectoryBlock* const directory)
+int DiskManager::findFreeEntry(DirectoryBlock* const directory)
 {
     Entry* entries = directory->getDir();
     for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i){
@@ -132,27 +140,34 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
     return lastBlockNumber;
 }
 
-// Write any block to disk
-STATUS_CODE DWRITE(unsigned int blockNum, Block* blockPtr)
+SearchResult DiskManager::findFile(std::deque<std::string>& nameBuffer) 
 {
-    
+    return _diskSearcher->findFile(nameBuffer);
+}
+
+// Write any block to disk
+STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
+{
+    return STATUS_CODE::SUCCESS;
 }
 
 // Add/update entry
-STATUS_CODE DWRITE(DirectoryBlock* directory, unsigned int entryIndex, const char* name, char type)
+STATUS_CODE DiskManager::DWRITE(DirectoryBlock* directory, unsigned int entryIndex, const char* name, char type)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 
 // Write user data
-STATUS_CODE DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes)
+STATUS_CODE DiskManager::DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes)
 {
-
+    return STATUS_CODE::SUCCESS;
 }
 
 
 DiskManager::~DiskManager()
 {
+    delete _diskWriter;
+    delete _diskSearcher;
     for(auto& pair : _blockMap){
         delete pair.second;
     }
