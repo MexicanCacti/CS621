@@ -11,7 +11,8 @@ class DiskWriter{
         DiskWriter() = delete;
         DiskWriter(DiskManager& diskManager) : _diskManager(diskManager) {}
         STATUS_CODE const writeToBlock(const unsigned int& blockNumber, const char* data, const int& bytes);
-        STATUS_CODE const chainDirectoryBlock(DirectoryBlock* const directory, const unsigned int& newBlockNumber);
-        STATUS_CODE const addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type);
+        std::pair<STATUS_CODE, DirectoryBlock*> const chainDirectoryBlock(DirectoryBlock* const directory);
+        STATUS_CODE const addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum);
+        STATUS_CODE const createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type);
 
 };

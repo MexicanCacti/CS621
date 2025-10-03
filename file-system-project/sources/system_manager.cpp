@@ -31,30 +31,23 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
 
-    // Found file with same name
-    if(status == SUCCESS) _diskManager.freeBlock(parentDir->getDir()[entryIndex].LINK);
-
-    _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
-
-    /*
-    if(!dir_and_index.first){
-       // Search for next free entry in root directory & place 
-        STATUS_CODE status = _rootBlock->addEntry(fileName.c_str(), _rootBlock, type, _diskManager);
+    // Found file with same name in last directory of given path
+    if(status == SUCCESS){
+        _diskManager.freeBlock(parentDir->getDir()[entryIndex].LINK);
+        auto [status, allocatedBlock] = _diskManager.allocateBlock(type);
         if(status != STATUS_CODE::SUCCESS) return status;
+        return _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type, allocatedBlock);
     }
-    else{
-        // Allocate new block, free old block, replace entry info
-        _diskManager.allocateBlock(type);
-        _diskManager.freeBlock(dir_and_index.first->getEntry(dir_and_index.second)->LINK);
-        dir_and_index.first->getEntry(dir_and_index.second)->LINK = nextFreeBlock;
-        dir_and_index.first->getEntry(dir_and_index.second)->SIZE = 0;
-        dir_and_index.first->getEntry(dir_and_index.second)->TYPE = type;
-        strncpy(dir_and_index.first->getEntry(dir_and_index.second)->NAME, fileName.c_str(), MAX_NAME_LENGTH);
-        dir_and_index.first->getEntry(dir_and_index.second)->NAME[MAX_NAME_LENGTH] = '\0';
-    }
-    */
-    
-    return STATUS_CODE::SUCCESS;
+
+    // No file exists with same name
+    // Check how many directories of given path don't exist. Will need to create that many directories
+    int numNeededFreeBlocks = nameBufferQueue.size();
+    if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+
+    std::deque<std::string> existingPathBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
+    int pathLength = existingPathBufferQueue.size();
+    while(existingPathBufferQueue.size() != pathLength - nameBufferQueue.size()) existingPathBufferQueue.pop_back();
+    return _diskManager.DWRITE(existingPathBufferQueue, nameBufferQueue, type);
 }
 
 STATUS_CODE SystemManager::OPEN(const char& mode, const std::string nameBuffer)

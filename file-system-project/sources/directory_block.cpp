@@ -14,4 +14,11 @@ STATUS_CODE DirectoryBlock::addEntry(const char* name, const char& type, const u
     return STATUS_CODE::SUCCESS;
 }
 
+unsigned int DirectoryBlock::findFreeEntry(){
+    for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i){
+        if(DIR[i].TYPE == 'F') return i;
+    }
+    return MAX_DIRECTORY_ENTRIES;
+}
+
 DirectoryBlock::~DirectoryBlock() = default;

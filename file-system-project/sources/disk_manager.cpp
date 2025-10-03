@@ -13,7 +13,7 @@ void DiskManager::initBlocks()
     }
 
     _blockMap[_numBlocks] = new Block(_numBlocks - 1, 0);
-
+    _numFreeBlocks = _numBlocks - 1;
     DirectoryBlock* root = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
     root->setFreeBlock(1);
 
@@ -78,6 +78,7 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
         _blockMap[freeBlockNumber] = new DirectoryBlock(0, 0);
     }
     
+    --_numFreeBlocks;
     return {STATUS_CODE::SUCCESS, freeBlockNumber};
 }
 
@@ -106,7 +107,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
             Block* oldFreeBlock = _blockMap[oldFreeNumber];
             oldFreeBlock->setPrevBlock(currentBlockNumber);
         }
-
+        ++_numFreeBlocks;
         rootBlock->setFreeBlock(currentBlockNumber);
         currentBlockNumber = chainedBlockNumber;
     }
@@ -152,9 +153,10 @@ STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 }
 
 // Add/update entry
-STATUS_CODE DiskManager::DWRITE(DirectoryBlock* directory, unsigned int entryIndex, const char* name, char type)
+// So when you call this-> first call allocate block to get the block num this should be assigned
+STATUS_CODE DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type, const unsigned int& blockNum)
 {
-    return STATUS_CODE::SUCCESS;
+    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, blockNum);
 }
 
 // Write user data
@@ -163,6 +165,10 @@ STATUS_CODE DiskManager::DWRITE(UserDataBlock* dataBlock, const char* buffer, si
     return STATUS_CODE::SUCCESS;
 }
 
+STATUS_CODE DiskManager::DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+{
+    return _diskWriter->createToFile(existingPath, nameBufferQueue, type);
+}
 
 DiskManager::~DiskManager()
 {
