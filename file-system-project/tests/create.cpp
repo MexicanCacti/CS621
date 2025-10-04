@@ -60,6 +60,8 @@ void printSummary() {
     std::cout << "Total: " << (testsPassed + testsFailed) << "\n";
 }
 
+// NOTE: NEED TO TEST ENTRY OVERFLOW & OUT OF MEMORY STILL!
+// NOTE: IF PATH INCLUDES A FILE... SHOULD WE NOT CREATE OR REPLACE FILE WITH DIR?
 int main() {
     DiskManager diskManager(NUM_BLOCKS, BLOCK_SIZE, USER_DATA_SIZE);
     TestSystemManager testSystem(diskManager, "testRoot");
@@ -77,8 +79,9 @@ int main() {
         {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'D', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'D', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS},
-        {'U', "dirA", "dirA", 2, STATUS_CODE::SUCCESS}
-
+        {'U', "dirA", "dirA", 2, STATUS_CODE::SUCCESS},
+        {'D', "dirA/dirB/dirC/dirD", "dirD", 5, STATUS_CODE::SUCCESS},
+        {'U', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS}
     };
 
     for(auto& test : createTests) {
