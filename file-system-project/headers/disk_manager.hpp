@@ -6,6 +6,7 @@
 #include <string>
 #include "../utils/status_codes.hpp"
 #include "../utils/search_result.hpp"
+#include "../utils/write_result.hpp"
 
 class DiskSearcher;
 class DiskWriter;
@@ -42,9 +43,9 @@ class DiskManager{
         void const setNextFreeBlock(const unsigned int& blockNum) {dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(blockNum);}
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
         STATUS_CODE DWRITE(unsigned int blockNum, Block* blockPtr);        // Write any block to disk
-        STATUS_CODE DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type, const unsigned int& blockNum); // Add/update entry
+        WriteResult DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type); // Add/update entry
         STATUS_CODE DWRITE(UserDataBlock* dataBlock, const char* buffer, size_t nBytes); // Write user data
-        STATUS_CODE DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type); // Create needs to create path to created file/dir
+        WriteResult DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type); // Create needs to create path to created file/dir
 
 
         SearchResult findFile(std::deque<std::string>& nameBuffer);

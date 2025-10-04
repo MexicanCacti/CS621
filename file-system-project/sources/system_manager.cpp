@@ -1,17 +1,18 @@
 #include "../headers/system_manager.hpp"
+#include <iostream>
 
-std::deque<std::string> SystemManager::tokenizeString(const std::string& str, const char& delim){
+std::deque<std::string> SystemManager::tokenizeString(const std::string& str, const char& delim)
+{
     std::deque<std::string> nameBufferQueue;
     std::string bufferCopy = str;
     size_t startPos = 0;
     size_t splitPos = 0;
     while(splitPos != std::string::npos){
         splitPos = bufferCopy.find(delim, startPos);
-        nameBufferQueue.push_front(bufferCopy.substr(startPos, splitPos - startPos));
+        nameBufferQueue.push_back(bufferCopy.substr(startPos, splitPos - startPos));
         startPos = splitPos + 1;
     }
 
-    nameBufferQueue.push_front(bufferCopy.substr(startPos, std::string::npos));
     return nameBufferQueue;
 }
 
@@ -24,30 +25,52 @@ SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootNa
 STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer)
 {
     if(type != 'U' && type != 'D') return STATUS_CODE::INVALID_TYPE;
-    std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
-    std::string fileName = nameBufferQueue.back();
-    SearchResult searchResult = _diskManager.findFile(nameBufferQueue);
+    std::deque<std::string> fullPath = tokenizeString(nameBuffer, PATH_DELIMITER);
+    std::string fileName = fullPath.back();
+    SearchResult searchResult = _diskManager.findFile(fullPath);
     STATUS_CODE status = searchResult.statusCode;
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
 
+    WriteResult writeResult;
     // Found file with same name in last directory of given path
-    if(status == SUCCESS){
-        _diskManager.freeBlock(parentDir->getDir()[entryIndex].LINK);
-        auto [status, allocatedBlock] = _diskManager.allocateBlock(type);
-        if(status != STATUS_CODE::SUCCESS) return status;
-        return _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type, allocatedBlock);
+    if(status == STATUS_CODE::SUCCESS)
+    {
+        writeResult = _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
+        if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
+        _lastOpened = writeResult.entry;
+        _fileMode = 'O';
+        return writeResult.status;
     }
 
     // No file exists with same name
     // Check how many directories of given path don't exist. Will need to create that many directories
-    int numNeededFreeBlocks = nameBufferQueue.size();
-    if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+    std::deque<std::string> existingPathBufferQueue;
+    std::deque<std::string> needToCreate;
 
-    std::deque<std::string> existingPathBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
-    int pathLength = existingPathBufferQueue.size();
-    while(existingPathBufferQueue.size() != pathLength - nameBufferQueue.size()) existingPathBufferQueue.pop_back();
-    return _diskManager.DWRITE(existingPathBufferQueue, nameBufferQueue, type);
+    for(auto& component : fullPath) 
+    {
+        existingPathBufferQueue.push_back(component);
+        SearchResult searchResult = _diskManager.findFile(existingPathBufferQueue);
+        if(searchResult.statusCode != STATUS_CODE::SUCCESS) 
+        {
+            needToCreate.push_back(component);
+            auto it = std::find(fullPath.begin(), fullPath.end(), component);
+            for(++it; it != fullPath.end(); ++it) needToCreate.push_back(*it);
+            existingPathBufferQueue.pop_back();
+            break;
+        }
+    }
+    
+    int numNeededFreeBlocks = needToCreate.size();
+    if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+    writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
+
+    if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
+    _lastOpened = writeResult.entry;
+    _fileMode = 'O';
+    return writeResult.status;
+    
 }
 
 STATUS_CODE SystemManager::OPEN(const char& mode, const std::string nameBuffer)

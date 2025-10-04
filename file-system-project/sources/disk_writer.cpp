@@ -24,18 +24,13 @@ std::pair<STATUS_CODE, DirectoryBlock*> const DiskWriter::chainDirectoryBlock(Di
 
 }
 
-STATUS_CODE const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum)
+WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum)
 {
-    // Check if the directory & entry is free. If not look for next free entry. If no free entry, then try to allocate & chain a new directory.
-    if(entryIndex > MAX_DIRECTORY_ENTRIES) return STATUS_CODE::BAD_COMMAND;
+    if(entryIndex > MAX_DIRECTORY_ENTRIES) return {STATUS_CODE::BAD_COMMAND, nullptr, type};
+    
+    directory->getDir()[entryIndex] = {name, type, blockNum, 0};
 
-    if(directory->getDir()[entryIndex].TYPE != 'F'){
-        
-    }
-    else{
-        directory->addEntry(name, type, entryIndex, blockNum);
-    }
-    return STATUS_CODE::SUCCESS;
+    return {STATUS_CODE::SUCCESS, &directory->getDir()[entryIndex], type};
 }
 
 /*
@@ -47,24 +42,27 @@ STATUS_CODE const DiskWriter::addEntryToDirectory(DirectoryBlock* const director
     3. Now take from the nameBufferQueue to create directories until the end file is reached
     4. Place the end file as an entry in the last parent directory
 */
-STATUS_CODE const DiskWriter::createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
 {
+    DirectoryBlock* directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(0));
     // Find last valid directory
-    SearchResult findStartPoint = _diskManager.findFile(existingPath);
-    if(findStartPoint.statusCode != STATUS_CODE::SUCCESS) return STATUS_CODE::NO_FILE_FOUND;
+    if(!existingPath.empty())
+    {
+        SearchResult findStartPoint = _diskManager.findFile(existingPath);
+        if(findStartPoint.statusCode != STATUS_CODE::SUCCESS) return {STATUS_CODE::NO_FILE_FOUND, nullptr, type};
+        Entry startPoint = findStartPoint.directory->getDir()[findStartPoint.entryIndex];
+        if(startPoint.TYPE != 'D') return {STATUS_CODE::UNKNOWN_ERROR, nullptr, type};
+        directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(startPoint.LINK));
+    }
 
-    Entry startPoint = findStartPoint.directory->getDir()[findStartPoint.entryIndex];
-    if(startPoint.TYPE != 'D') return STATUS_CODE::UNKNOWN_ERROR;
+    if(!directory) return {STATUS_CODE::UNKNOWN_ERROR, nullptr, type};
 
-    DirectoryBlock* directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(startPoint.LINK));
-    if(!directory) return STATUS_CODE::UNKNOWN_ERROR;
-
-    // Now do a check if it has a free entry, if it doesn't need to chain... but ensure that we have enough space for a chain!
+    // Now do a check if it has a free entry, if it doesn't -> need to chain... but ensure that we have enough space for a chain!
     unsigned int nextFreeEntry = directory->findFreeEntry();
     if(nextFreeEntry == MAX_DIRECTORY_ENTRIES){
-        if(nameBufferQueue.size() + 1 > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+        if(nameBufferQueue.size() + 1 > _diskManager.getNumFreeBlocks()) return {STATUS_CODE::OUT_OF_MEMORY, nullptr, type};
         auto [chainStatus, chain] = chainDirectoryBlock(directory);
-        if(chainStatus != STATUS_CODE::SUCCESS) return chainStatus;
+        if(chainStatus != STATUS_CODE::SUCCESS) return {chainStatus, nullptr, type};
         directory = chain;
         nextFreeEntry = directory->findFreeEntry();
     }
@@ -72,7 +70,7 @@ STATUS_CODE const DiskWriter::createToFile(std::deque<std::string>& existingPath
     while(nameBufferQueue.size() > 1){
         std::string bufferString = nameBufferQueue.front();
         auto [status, freeBlock] = _diskManager.allocateBlock('D');
-        if(status != STATUS_CODE::SUCCESS) return status;
+        if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
         addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock);
         directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(freeBlock));
         nameBufferQueue.pop_front();
@@ -80,8 +78,7 @@ STATUS_CODE const DiskWriter::createToFile(std::deque<std::string>& existingPath
     }
 
     auto [status, freeBlock] = _diskManager.allocateBlock(type);
-    if(!status != STATUS_CODE::SUCCESS) return status;
-    addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.front().c_str(), type, freeBlock);
-    return STATUS_CODE::SUCCESS;
+    if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
+    return addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.back().c_str(), type, freeBlock);
 
 }

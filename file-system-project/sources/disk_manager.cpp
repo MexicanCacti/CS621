@@ -98,7 +98,17 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
     while(currentBlockNumber != 0){
         Block* currentBlock = _blockMap[blockNumber];
         unsigned int chainedBlockNumber = currentBlock->getNextBlock();
-
+        // Check if directory -> will have to free its entries as well!
+        if(auto* dirBlock = dynamic_cast<DirectoryBlock*>(currentBlock)){
+            Entry* entries = dirBlock->getDir();
+            for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i){
+                if(entries[i].TYPE == 'F') continue;
+                if(entries[i].LINK != 0){
+                    freeBlock(entries[i].LINK);
+                    entries[i].TYPE = 'F';
+                }
+            }
+        }
         unsigned int oldFreeNumber = rootBlock->getFreeBlock();
         currentBlock->setNextBlock(oldFreeNumber);
         currentBlock->setPrevBlock(0);
@@ -153,10 +163,13 @@ STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 }
 
 // Add/update entry
-// So when you call this-> first call allocate block to get the block num this should be assigned
-STATUS_CODE DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type, const unsigned int& blockNum)
+WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type)
 {
-    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, blockNum);
+    // NOTE: Need a way to reverse the free if allocation fails!
+    freeBlock(directory->getDir()[entryIndex].LINK);
+    auto [status, allocatedBlock] = allocateBlock(type);
+    if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
+    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock);
 }
 
 // Write user data
@@ -165,7 +178,7 @@ STATUS_CODE DiskManager::DWRITE(UserDataBlock* dataBlock, const char* buffer, si
     return STATUS_CODE::SUCCESS;
 }
 
-STATUS_CODE DiskManager::DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+WriteResult DiskManager::DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
 {
     return _diskWriter->createToFile(existingPath, nameBufferQueue, type);
 }

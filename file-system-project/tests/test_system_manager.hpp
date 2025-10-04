@@ -12,7 +12,9 @@ class TestSystemManager : public SystemManager {
         }
         Entry* const getEntry() {return _lastOpened;}
         void setFileMode(char mode) {_fileMode = mode;}
+        char getFileMode() {return _fileMode;}
         void setRoot(DirectoryBlock* root) {_rootBlock = root;}
         void setFilePointer(const unsigned int& fp) {_filePointer = fp;}
         unsigned int const getFilePointer() { return _filePointer;}
+        SearchResult findCreatedFile(const std::string& filePath);
 };

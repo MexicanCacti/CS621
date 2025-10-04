@@ -1,6 +1,8 @@
 #pragma once
 #include "../headers/disk_manager.hpp"
+#include "../utils/write_result.hpp"
 #include <deque>
+#include <algorithm>
 
 class SystemManager{
     protected:
