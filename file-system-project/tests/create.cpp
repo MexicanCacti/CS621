@@ -75,13 +75,19 @@ int main() {
     };
     // CREATE operations
     // {type, name, expectedBlock, expectedStatus}
+    // TODO: 
+    // Add max name length test
+    // Add max directory entries test
+    // Add out of memory test
+    // Need way to modify system constants for testing!
     std::vector<testType> createTests = {
-        {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'D', "file1", "file1", 1, STATUS_CODE::SUCCESS},
+        {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'D', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS},
         {'U', "dirA", "dirA", 2, STATUS_CODE::SUCCESS},
-        {'D', "dirA/dirB/dirC/dirD", "dirD", 5, STATUS_CODE::SUCCESS},
-        {'U', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS}
+        {'D', "dirA/dirB/dirC/dirD", "dirD", 5, STATUS_CODE::ILLEGAL_ACCESS},
+        {'U', "dirA/dirB", "dirB", 5, STATUS_CODE::ILLEGAL_ACCESS},
+        {'D', "dirA", "dirA", 2, STATUS_CODE::SUCCESS}
     };
 
     for(auto& test : createTests) {

@@ -26,6 +26,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
 {
     if(type != 'U' && type != 'D') return STATUS_CODE::INVALID_TYPE;
     std::deque<std::string> fullPath = tokenizeString(nameBuffer, PATH_DELIMITER);
+    std::deque<std::string> fullPathCopy = fullPath; // To keep full path intact since findFile modifies the deque
     std::string fileName = fullPath.back();
     SearchResult searchResult = _diskManager.findFile(fullPath);
     STATUS_CODE status = searchResult.statusCode;
@@ -48,17 +49,20 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
     std::deque<std::string> existingPathBufferQueue;
     std::deque<std::string> needToCreate;
 
-    for(auto& component : fullPath) 
+    for(auto& component : fullPathCopy) 
     {
         existingPathBufferQueue.push_back(component);
         SearchResult searchResult = _diskManager.findFile(existingPathBufferQueue);
         if(searchResult.statusCode != STATUS_CODE::SUCCESS) 
         {
             needToCreate.push_back(component);
-            auto it = std::find(fullPath.begin(), fullPath.end(), component);
-            for(++it; it != fullPath.end(); ++it) needToCreate.push_back(*it);
+            auto it = std::find(fullPathCopy.begin(), fullPathCopy.end(), component);
+            for(++it; it != fullPathCopy.end(); ++it) needToCreate.push_back(*it);
             existingPathBufferQueue.pop_back();
             break;
+        }
+        else{
+            if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return STATUS_CODE::ILLEGAL_ACCESS;
         }
     }
     
