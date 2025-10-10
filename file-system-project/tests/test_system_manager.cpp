@@ -6,3 +6,8 @@ SearchResult TestSystemManager::findCreatedFile(const std::string& filePath)
     return _diskManager.findFile(nameBuffer);
     
 }
+
+unsigned int TestSystemManager::getNextFreeBlock()
+{
+    return dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(0))->getFreeBlock();
+}

@@ -43,37 +43,42 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string nameBuffer
         _fileMode = 'O';
         return writeResult.status;
     }
-
-    // No file exists with same name
-    // Check how many directories of given path don't exist. Will need to create that many directories
-    std::deque<std::string> existingPathBufferQueue;
-    std::deque<std::string> needToCreate;
-
-    for(auto& component : fullPathCopy) 
+    else if(status == STATUS_CODE::NO_FILE_FOUND)
     {
-        existingPathBufferQueue.push_back(component);
-        SearchResult searchResult = _diskManager.findFile(existingPathBufferQueue);
-        if(searchResult.statusCode != STATUS_CODE::SUCCESS) 
-        {
-            needToCreate.push_back(component);
-            auto it = std::find(fullPathCopy.begin(), fullPathCopy.end(), component);
-            for(++it; it != fullPathCopy.end(); ++it) needToCreate.push_back(*it);
-            existingPathBufferQueue.pop_back();
-            break;
-        }
-        else{
-            if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return STATUS_CODE::ILLEGAL_ACCESS;
-        }
-    }
-    
-    int numNeededFreeBlocks = needToCreate.size();
-    if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
-    writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
+        // No file exists with same name
+        // Check how many directories of given path don't exist. Will need to create that many directories
+        std::deque<std::string> existingPathBufferQueue;
+        std::deque<std::string> needToCreate;
 
-    if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
-    _lastOpened = writeResult.entry;
-    _fileMode = 'O';
-    return writeResult.status;
+        for(auto& component : fullPathCopy) 
+        {
+            existingPathBufferQueue.push_back(component);
+            auto probePath = existingPathBufferQueue;
+            SearchResult searchResult = _diskManager.findFile(probePath);
+            if(searchResult.statusCode != STATUS_CODE::SUCCESS) 
+            {
+                needToCreate.push_back(component);
+                auto it = std::find(fullPathCopy.begin(), fullPathCopy.end(), component);
+                for(++it; it != fullPathCopy.end(); ++it) needToCreate.push_back(*it);
+                existingPathBufferQueue.pop_back();
+                break;
+            }
+            else{
+                if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return STATUS_CODE::ILLEGAL_ACCESS;
+            }
+        }
+        
+        int numNeededFreeBlocks = needToCreate.size();
+        if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+        writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
+
+        if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
+        _lastOpened = writeResult.entry;
+        _fileMode = 'O';
+        return writeResult.status;
+    }
+
+    return status;
     
 }
 

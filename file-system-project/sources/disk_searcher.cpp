@@ -3,12 +3,13 @@
 
 SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
     if(nameBuffer.empty()) return {BAD_COMMAND, nullptr, 0};
-
+    
     DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(0));
     if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
 
     while(!nameBuffer.empty()) {
         std::string currentName = nameBuffer.front();
+        if(currentName.length() > MAX_NAME_LENGTH) return {BAD_COMMAND, nullptr, 0};
         bool found = false;
 
         for(DirectoryBlock* dir = currentDir; 

@@ -17,4 +17,5 @@ class TestSystemManager : public SystemManager {
         void setFilePointer(const unsigned int& fp) {_filePointer = fp;}
         unsigned int const getFilePointer() { return _filePointer;}
         SearchResult findCreatedFile(const std::string& filePath);
+        unsigned int getNextFreeBlock();
 };

@@ -1,6 +1,6 @@
 #include "../headers/disk_writer.hpp"
 #include "../headers/disk_manager.hpp"
-
+#include <iostream>
 STATUS_CODE const DiskWriter::writeToBlock(const unsigned int& blockNumber, const char* data, const int& bytes)
 {
     return STATUS_CODE::SUCCESS;

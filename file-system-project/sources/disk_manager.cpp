@@ -1,6 +1,7 @@
 #include "../headers/disk_manager.hpp"
 #include "../headers/disk_searcher.hpp"
 #include "../headers/disk_writer.hpp"
+#include <iostream>
 
 void DiskManager::initBlocks()
 {
@@ -64,11 +65,12 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
 
     Block* freeBlock = _blockMap[freeBlockNumber];
 
+    //std::cout << "[DEBUG] allocateBlock requested type=" << type << " freeHead=" << rootBlock->getFreeBlock() << "\n";
+
     unsigned int nextFreeBlockNumber = freeBlock->getNextBlock();
     rootBlock->setFreeBlock(nextFreeBlockNumber);
     if(nextFreeBlockNumber != 0) _blockMap[nextFreeBlockNumber]->setPrevBlock(0);
 
-    freeBlock->setNextBlock(0);
     freeBlock->setPrevBlock(0);
 
     if(type == 'U'){
@@ -79,6 +81,7 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
     }
     
     --_numFreeBlocks;
+    //std::cout << "[DEBUG] allocateBlock returning block=" << freeBlockNumber << " nextFree=" << rootBlock->getFreeBlock() << "\n";
     return {STATUS_CODE::SUCCESS, freeBlockNumber};
 }
 
@@ -95,8 +98,9 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
     DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
     if(!rootBlock) return;
 
-    while(currentBlockNumber != 0){
-        Block* currentBlock = _blockMap[blockNumber];
+    while(currentBlockNumber != 0)
+    {
+        Block* currentBlock = _blockMap[currentBlockNumber];
         unsigned int chainedBlockNumber = currentBlock->getNextBlock();
         // Check if directory -> will have to free its entries as well!
         if(auto* dirBlock = dynamic_cast<DirectoryBlock*>(currentBlock)){
@@ -110,6 +114,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
             }
         }
         unsigned int oldFreeNumber = rootBlock->getFreeBlock();
+        std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
         currentBlock->setNextBlock(oldFreeNumber);
         currentBlock->setPrevBlock(0);
 
@@ -119,6 +124,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         }
         ++_numFreeBlocks;
         rootBlock->setFreeBlock(currentBlockNumber);
+        std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
         currentBlockNumber = chainedBlockNumber;
     }
 }
