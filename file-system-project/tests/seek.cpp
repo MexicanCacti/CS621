@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cassert>
 #include <vector>
+#include <chrono>
 #include <../utils/status_codes_strings.hpp>
 
 unsigned int testsPassed = 0;
@@ -57,7 +58,6 @@ int main() {
 
     testSystem.setFileMode('I');
 
-    // No file open
     checkEqual("Seek with no file open", testSystem.SEEK(0,1), STATUS_CODE::NO_FILE_OPEN);
 
     testSystem.setEntry(&testFile);
@@ -87,20 +87,22 @@ int main() {
         {2, 0, -1},
         {-2, 0, -1}
     };
-
+    std::cout << std::endl;
     for(std::vector<int>& test : seekTests) {
         int base = test[0];
         int offset = test[1];
         int expected = test[2];
-
+        auto startTime = std::chrono::steady_clock::now();
         STATUS_CODE result = testSystem.SEEK(base, offset);
+        auto endTime = std::chrono::steady_clock::now();
+        auto timeTaken = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
         std::string seekString = "Seek Operation: BASE = ";
         seekString += std::to_string(base);
         seekString += " OFFSET = ";
         seekString += std::to_string(offset);
-
         if(base <-1 || base > 1) {
             checkEqual(seekString, result, STATUS_CODE::BAD_COMMAND);
+            std::cout << "Time Taken: " << timeTaken << " Nanoseconds\n" << std::endl;
             continue;
         }
 
@@ -111,6 +113,7 @@ int main() {
             checkEqual(seekString, result, STATUS_CODE::SUCCESS);
             checkEqual("File pointer after seek", testSystem.getFilePointer(), expected);
         }
+        std::cout << "Time Taken: " << timeTaken << " Nanoseconds\n" << std::endl;
 
     }
 

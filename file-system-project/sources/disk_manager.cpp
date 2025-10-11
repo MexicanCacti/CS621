@@ -114,7 +114,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
             }
         }
         unsigned int oldFreeNumber = rootBlock->getFreeBlock();
-        std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
+        // std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
         currentBlock->setNextBlock(oldFreeNumber);
         currentBlock->setPrevBlock(0);
 
@@ -124,7 +124,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         }
         ++_numFreeBlocks;
         rootBlock->setFreeBlock(currentBlockNumber);
-        std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
+        // std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
         currentBlockNumber = chainedBlockNumber;
     }
 }

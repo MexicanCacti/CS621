@@ -4,6 +4,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <chrono>
 #include "../utils/status_codes_strings.hpp"
 
 unsigned int testsPassed = 0;
@@ -123,10 +124,14 @@ int main() {
 
     };
 
-    for(auto& test : createTests) {
 
+    for(auto& test : createTests) {
+        auto startTime = std::chrono::steady_clock::now();
         STATUS_CODE result = testSystem.CREATE(test.type, test.path.c_str());
+        auto endTime = std::chrono::steady_clock::now();
+        auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
         std::cout << "Test| Type: " << test.type << "\tPath: " << test.path << std::endl;
+        std::cout << "Time Taken: " << timeTaken << " Microseconds" << std::endl;
         checkEqual("STATUS CHECK", result, test.expectedStatus);
         if(test.expectedStatus == STATUS_CODE::SUCCESS){
             Entry* entry = testSystem.getEntry();
