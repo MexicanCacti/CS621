@@ -2,9 +2,9 @@
 
 SearchResult TestSystemManager::findCreatedFile(const std::string& filePath)
 {
-    std::deque<std::string>nameBuffer = tokenizeString(filePath, PATH_DELIMITER);
-    return _diskManager.findFile(nameBuffer);
-    
+    auto lastSlash = filePath.rfind(PATH_DELIMITER);
+    std::string fileName = filePath.substr(lastSlash);
+    return _diskManager.findPath(filePath, fileName);
 }
 
 unsigned int TestSystemManager::getNextFreeBlock()

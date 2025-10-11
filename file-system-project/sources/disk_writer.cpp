@@ -24,12 +24,15 @@ std::pair<STATUS_CODE, DirectoryBlock*> const DiskWriter::chainDirectoryBlock(Di
 
 }
 
-WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum)
+WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum, std::string& existingPath)
 {
     if(entryIndex > MAX_DIRECTORY_ENTRIES) return {STATUS_CODE::BAD_COMMAND, nullptr, type};
     
     directory->getDir()[entryIndex] = {name, type, blockNum, 0};
-
+    unsigned int parentBlock = _diskManager._pathMap[existingPath];
+    existingPath += name;
+    _diskManager._pathMap[existingPath] = blockNum;
+    _diskManager._parentMap[blockNum] = parentBlock;
     return {STATUS_CODE::SUCCESS, &directory->getDir()[entryIndex], type};
 }
 
@@ -42,13 +45,18 @@ WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const director
     3. Now take from the nameBufferQueue to create directories until the end file is reached
     4. Place the end file as an entry in the last parent directory
 */
-WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+// NOTE: Need a way to reverse block allocation & update maps if allocation fails at any point!
+WriteResult const DiskWriter::createToFile(PathResult& pathResult, const char& type)
 {
     DirectoryBlock* directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(0));
+    std::string existingPath = pathResult.existingPath;
+    std::stack<std::string> missingPath = pathResult.missingPath;
+    auto lastSlash = existingPath.rfind(PATH_DELIMITER);
+    auto fileName = (lastSlash == std::string::npos) ? existingPath : existingPath.substr(lastSlash + 1);
     // Find last valid directory
     if(!existingPath.empty())
     {
-        SearchResult findStartPoint = _diskManager.findFile(existingPath);
+        SearchResult findStartPoint = _diskManager.findPath(existingPath, fileName);
         if(findStartPoint.statusCode != STATUS_CODE::SUCCESS) return {STATUS_CODE::NO_FILE_FOUND, nullptr, type};
         Entry startPoint = findStartPoint.directory->getDir()[findStartPoint.entryIndex];
         if(startPoint.TYPE != 'D') return {STATUS_CODE::UNKNOWN_ERROR, nullptr, type};
@@ -60,25 +68,44 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
     // Now do a check if it has a free entry, if it doesn't -> need to chain... but ensure that we have enough space for a chain!
     unsigned int nextFreeEntry = directory->findFreeEntry();
     if(nextFreeEntry == MAX_DIRECTORY_ENTRIES){
-        if(nameBufferQueue.size() + 1 > _diskManager.getNumFreeBlocks()) return {STATUS_CODE::OUT_OF_MEMORY, nullptr, type};
+        if(missingPath.size() + 1 > _diskManager.getNumFreeBlocks()) return {STATUS_CODE::OUT_OF_MEMORY, nullptr, type};
         auto [chainStatus, chain] = chainDirectoryBlock(directory);
         if(chainStatus != STATUS_CODE::SUCCESS) return {chainStatus, nullptr, type};
         directory = chain;
         nextFreeEntry = directory->findFreeEntry();
     }
     
-    while(nameBufferQueue.size() > 1){
-        std::string bufferString = nameBufferQueue.front();
+    while(missingPath.size() > 1){
+        std::string bufferString = missingPath.top();
         auto [status, freeBlock] = _diskManager.allocateBlock('D');
         if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
-        addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock);
+        addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock, existingPath);
         directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(freeBlock));
-        nameBufferQueue.pop_front();
+        missingPath.pop();
         nextFreeEntry = directory->findFreeEntry();
     }
 
     auto [status, freeBlock] = _diskManager.allocateBlock(type);
     if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
-    return addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.back().c_str(), type, freeBlock);
+    return addEntryToDirectory(directory, nextFreeEntry, missingPath.top().c_str(), type, freeBlock, existingPath);
+}
 
+WriteResult const DiskWriter::createFile(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type, PathResult& pathResult)
+{
+    // NOTE: Need a way to reverse the free if allocation fails!
+    std::string existingPath = pathResult.existingPath;
+    std::stack<std::string> missingStack = pathResult.missingPath;
+    std::string missingPath = "";
+    _diskManager.freeEntry(existingPath);
+    auto [status, allocatedBlock] = _diskManager.allocateBlock(type);
+    if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
+
+    while(!missingStack.empty())
+    {
+        missingPath.insert(0, missingStack.top());
+        missingStack.pop();
+    }
+    
+    std::string fullPath = existingPath + "/" + missingPath;
+    return addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock, fullPath);
 }

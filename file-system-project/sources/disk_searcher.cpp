@@ -1,40 +1,60 @@
 #include "../headers/disk_searcher.hpp"
 #include "../headers/disk_manager.hpp"
 
-SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
-    if(nameBuffer.empty()) return {BAD_COMMAND, nullptr, 0};
-    
-    DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(0));
+SearchResult const DiskSearcher::findPath(const std::string& pathBuffer, const std::string& fileName) 
+{
+    if(pathBuffer.empty()) return {BAD_COMMAND, nullptr, 0};
+
+    unsigned int foundBlock = 0;
+    unsigned int parentBlock = 0;
+    if(_diskManager._pathMap.find(pathBuffer) != _diskManager._pathMap.end())
+    {
+        foundBlock = _diskManager._pathMap.at(pathBuffer);
+        parentBlock = _diskManager._parentMap.at(foundBlock);
+    }
+
+    if(foundBlock == 0) return {NO_FILE_FOUND, nullptr, 0};
+
+    DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(parentBlock));
     if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
+    for(currentDir ; currentDir != nullptr ; currentDir = (currentDir->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(currentDir->getNextBlock())) : nullptr)
+    {
+        if(!currentDir) return {UNKNOWN_ERROR, nullptr, 0};
+        Entry* dir = currentDir->getDir();
 
-    while(!nameBuffer.empty()) {
-        std::string currentName = nameBuffer.front();
-        if(currentName.length() > MAX_NAME_LENGTH) return {BAD_COMMAND, nullptr, 0};
-        bool found = false;
-
-        for(DirectoryBlock* dir = currentDir; 
-            dir != nullptr; 
-            dir = (dir->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(dir->getNextBlock())) : nullptr)
+        for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i)
         {
-            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
-                Entry& e = dir->getDir()[i];
-                if(e.TYPE != 'F' && strncmp(e.NAME, currentName.c_str(), MAX_NAME_LENGTH - 1) == 0) {
-                    nameBuffer.pop_front();
-                    if(nameBuffer.empty()) return {SUCCESS, dir, i};
-                    if(e.TYPE == 'D') {
-                        currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap[e.LINK]);
-                        if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
-                        found = true;
-                        break;
-                    }
-                }
+            Entry& e = dir[i];
+            if(e.TYPE != 'F' && strncmp(fileName.c_str(), e.NAME, MAX_NAME_LENGTH - 1) == 0)
+            {
+                return {SUCCESS, currentDir, i};
             }
-            if(found) break;
         }
-
-        
-        if(!found) return {NO_FILE_FOUND, nullptr, 0};
     }
 
     return {NO_FILE_FOUND, nullptr, 0};
+
+}
+
+PathResult DiskSearcher::findMissingPath(std::string& pathBuffer)
+{
+    std::stack<std::string> missingPath;
+    while(!pathBuffer.empty())
+    {
+        if(_diskManager._pathMap.find(pathBuffer) != _diskManager._pathMap.end())
+        {
+            auto blockNumber = _diskManager._pathMap.at(pathBuffer);
+            if(dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(blockNumber)) == nullptr)
+            {
+                return {ILLEGAL_ACCESS, pathBuffer, missingPath};
+            }
+            else break;
+        }
+        auto lastSlash = pathBuffer.rfind(PATH_DELIMITER);
+        missingPath.push( (lastSlash == std::string::npos) ? pathBuffer : pathBuffer.substr(lastSlash + 1));
+        pathBuffer = (lastSlash == std::string::npos) ? "" : pathBuffer.substr(0, lastSlash);
+    }
+
+    
+    return {SUCCESS, pathBuffer, missingPath};
 }

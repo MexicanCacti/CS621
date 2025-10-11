@@ -53,7 +53,7 @@ int DiskManager::findFreeEntry(DirectoryBlock* const directory)
 }
 
 // Note, whenever allocate a block number, always free
-// Maybe have a public function for deleting a block?
+
 std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type)
 {
     DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
@@ -85,10 +85,75 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
     return {STATUS_CODE::SUCCESS, freeBlockNumber};
 }
 
+
+STATUS_CODE DiskManager::freeEntry(const std::string& fullPath)
+{
+    using freeEntry = std::pair<unsigned int, std::string>;
+    unsigned int blockNumber = _pathMap.at(fullPath);
+    std::stack<freeEntry> toFreeList;
+    std::queue<freeEntry> freeQueue;
+    freeQueue.push({blockNumber, fullPath});
+
+    while(!freeQueue.empty())
+    {
+        freeEntry toFree = freeQueue.front();
+        unsigned int freeBlock = toFree.first;
+        std::string path = toFree.second;
+        freeQueue.pop();
+        DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_blockMap.at(freeBlock));
+        UserDataBlock* currentFile = dynamic_cast<UserDataBlock*>(_blockMap.at(freeBlock));
+        if(currentDir)
+        {
+            do
+            {
+                toFreeList.push({freeBlock, path});
+                Entry* dir = currentDir->getDir();
+                for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i)
+                {
+                    auto entry = &dir[i];
+                    if(entry->TYPE != 'F') freeQueue.push({entry->LINK, path + "/" + entry->NAME});
+                }
+            }
+            while(currentDir->getNextBlock() != 0);
+ 
+        }
+        else if(currentFile)
+        {
+            toFreeList.push({freeBlock, path});
+            while(currentFile->getNextBlock() != 0){
+                freeBlock = currentFile->getNextBlock();
+                currentFile = dynamic_cast<UserDataBlock*>(_blockMap.at(freeBlock));
+                if(!currentFile) return UNKNOWN_ERROR;
+                freeQueue.push({freeBlock, ""});
+            }
+        }
+        else return UNKNOWN_ERROR;
+    }
+
+    while(!toFreeList.empty())
+    {
+
+        freeEntry toFree = toFreeList.top();
+        toFreeList.pop();
+        unsigned int toFreeBlock = toFree.first;
+        std::string toFreePath = toFree.second;
+
+        freeBlock(toFreeBlock);
+        if(!toFreePath.empty())
+        {
+            _pathMap.erase(toFreePath);
+            _parentMap.erase(toFreeBlock);
+        }
+    }
+
+    return SUCCESS;
+}
+
 /*
     freeBlock() does not delete the block entry. It is only written over when
     the next allocation occurs & the block is the next free block
     Free'd blocks are placed at front of linked-list of free blocks
+    ONLY called when deleting a chained directory block or a chained user data block
 */
 void DiskManager::freeBlock(const unsigned int& blockNumber)
 {
@@ -96,37 +161,22 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
 
     unsigned int currentBlockNumber = blockNumber;
     DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
+    Block* currentBlock = _blockMap[currentBlockNumber];
     if(!rootBlock) return;
 
-    while(currentBlockNumber != 0)
-    {
-        Block* currentBlock = _blockMap[currentBlockNumber];
-        unsigned int chainedBlockNumber = currentBlock->getNextBlock();
-        // Check if directory -> will have to free its entries as well!
-        if(auto* dirBlock = dynamic_cast<DirectoryBlock*>(currentBlock)){
-            Entry* entries = dirBlock->getDir();
-            for(unsigned int i = 0 ; i < MAX_DIRECTORY_ENTRIES; ++i){
-                if(entries[i].TYPE == 'F') continue;
-                if(entries[i].LINK != 0){
-                    freeBlock(entries[i].LINK);
-                    entries[i].TYPE = 'F';
-                }
-            }
-        }
-        unsigned int oldFreeNumber = rootBlock->getFreeBlock();
-        // std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
-        currentBlock->setNextBlock(oldFreeNumber);
-        currentBlock->setPrevBlock(0);
+    unsigned int oldFreeNumber = rootBlock->getFreeBlock();
+    // std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
+    currentBlock->setNextBlock(oldFreeNumber);
+    currentBlock->setPrevBlock(0);
 
-        if(oldFreeNumber != 0){
-            Block* oldFreeBlock = _blockMap[oldFreeNumber];
-            oldFreeBlock->setPrevBlock(currentBlockNumber);
-        }
-        ++_numFreeBlocks;
-        rootBlock->setFreeBlock(currentBlockNumber);
-        // std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
-        currentBlockNumber = chainedBlockNumber;
+    if(oldFreeNumber != 0){
+        Block* oldFreeBlock = _blockMap[oldFreeNumber];
+        oldFreeBlock->setPrevBlock(currentBlockNumber);
     }
+    ++_numFreeBlocks;
+    rootBlock->setFreeBlock(currentBlockNumber);
+    // std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
+    
 }
 
 unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber)
@@ -157,9 +207,14 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
     return lastBlockNumber;
 }
 
-SearchResult DiskManager::findFile(std::deque<std::string>& nameBuffer) 
+SearchResult DiskManager::findPath(const std::string& pathBuffer, const std::string& fileName) 
 {
-    return _diskSearcher->findFile(nameBuffer);
+    return _diskSearcher->findPath(pathBuffer, fileName);
+}
+
+PathResult DiskManager::findMissingPath(std::string& pathBuffer)
+{
+    return _diskSearcher->findMissingPath(pathBuffer);
 }
 
 // Write any block to disk
@@ -169,13 +224,9 @@ STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 }
 
 // Add/update entry
-WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type)
+WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type, PathResult& pathResult)
 {
-    // NOTE: Need a way to reverse the free if allocation fails!
-    freeBlock(directory->getDir()[entryIndex].LINK);
-    auto [status, allocatedBlock] = allocateBlock(type);
-    if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
-    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock);
+    return _diskWriter->createFile(directory, entryIndex, name, type, pathResult);
 }
 
 // Write user data
@@ -184,9 +235,9 @@ STATUS_CODE DiskManager::DWRITE(UserDataBlock* dataBlock, const char* buffer, si
     return STATUS_CODE::SUCCESS;
 }
 
-WriteResult DiskManager::DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+WriteResult DiskManager::DWRITE(PathResult& pathResult, const char& type)
 {
-    return _diskWriter->createToFile(existingPath, nameBufferQueue, type);
+    return _diskWriter->createToFile(pathResult, type);
 }
 
 DiskManager::~DiskManager()

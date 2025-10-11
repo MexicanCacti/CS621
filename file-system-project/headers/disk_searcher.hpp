@@ -1,6 +1,7 @@
 #pragma once
 #include <deque>
 #include "../utils/search_result.hpp"
+#include "../utils/path_result.hpp"
 
 class DiskManager;
 
@@ -11,5 +12,6 @@ class DiskSearcher{
     public:
         DiskSearcher() = delete;
         DiskSearcher(DiskManager& diskManager) : _diskManager(diskManager) {}
-        SearchResult const findFile(std::deque<std::string>& nameBuffer);
+        SearchResult const findPath(const std::string& pathBuffer, const std::string& fileName);
+        PathResult findMissingPath(std::string& pathBuffer);
 };
