@@ -67,66 +67,42 @@ int main() {
     DiskManager diskManager(testBlocks, BLOCK_SIZE, USER_DATA_SIZE);
     TestSystemManager testSystem(diskManager, "testRoot");
     
-    struct testType {
+    struct createType {
         char type;
         std::string path;
         std::string name;
         unsigned int expectedBlock;
         STATUS_CODE expectedStatus;
     };
-    // CREATE operations
-    // {type, name, expectedBlock, expectedStatus}
-    // TODO: 
-    // Add test to check that won't create chain if not enough room for chain + directory
-    std::vector<testType> createTests = {
-        {'Z', "file1", "file1", 1, STATUS_CODE::INVALID_TYPE},
-        {'D', "file1", "file1", 1, STATUS_CODE::SUCCESS},
-        {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
-        {'D', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS},
-        {'D', "dirA/dirB/dirC", "dirC", 4, STATUS_CODE::SUCCESS},
-        {'U', "dirA", "dirA", 2, STATUS_CODE::SUCCESS},
-        {'D', "dirA/dirB/dirC/dirD", "dirD", 5, STATUS_CODE::ILLEGAL_ACCESS},
-        {'U', "dirA/dirB", "dirB", 5, STATUS_CODE::ILLEGAL_ACCESS},
-        {'D', "dirA", "dirA", 2, STATUS_CODE::SUCCESS},
-        {'D', "12345678910", "12345678910", 3 , STATUS_CODE::BAD_COMMAND},
-        {'D', "dirA/12345678910", "12345678910", 3, STATUS_CODE::BAD_COMMAND},
-        {'D', "dirB", "dirB", 3, STATUS_CODE::SUCCESS},
-        {'D', "dirC", "dirC", 4, STATUS_CODE::SUCCESS},
-        {'D', "dirD", "dirD", 5, STATUS_CODE::SUCCESS},
-        {'D', "dirE", "dirE", 6, STATUS_CODE::SUCCESS},
-        {'D', "dirF", "dirF", 7, STATUS_CODE::SUCCESS},
-        {'D', "dirG", "dirG", 8, STATUS_CODE::SUCCESS},
-        {'D', "dirH", "dirH", 9, STATUS_CODE::SUCCESS},
-        {'D', "dirI", "dirI", 10, STATUS_CODE::SUCCESS},
-        {'D', "dirJ", "dirJ", 11, STATUS_CODE::SUCCESS},
-        {'D', "dirK", "dirK", 12, STATUS_CODE::SUCCESS},
-        {'D', "dirL", "dirL", 13, STATUS_CODE::SUCCESS},
-        {'D', "dirM", "dirM", 14, STATUS_CODE::SUCCESS},
-        {'D', "dirN", "dirN", 15, STATUS_CODE::SUCCESS},
-        {'D', "dirO", "dirO", 16, STATUS_CODE::SUCCESS},
-        {'D', "dirP", "dirP", 17, STATUS_CODE::SUCCESS},
-        {'D', "dirQ", "dirQ", 18, STATUS_CODE::SUCCESS},
-        {'D', "dirR", "dirR", 19, STATUS_CODE::SUCCESS},
-        {'D', "dirS", "dirS", 20, STATUS_CODE::SUCCESS},
-        {'D', "dirT", "dirT", 21, STATUS_CODE::SUCCESS},
-        {'D', "dirU", "dirU", 22, STATUS_CODE::SUCCESS},
-        {'D', "dirV", "dirV", 23, STATUS_CODE::SUCCESS},
-        {'D', "dirW", "dirW", 24, STATUS_CODE::SUCCESS},
-        {'D', "dirX", "dirX", 25, STATUS_CODE::SUCCESS},
-        {'D', "dirY", "dirY", 26, STATUS_CODE::SUCCESS},
-        {'D', "dirZ", "dirZ", 27, STATUS_CODE::SUCCESS},
-        {'D', "dirAZ", "dirAZ", 28, STATUS_CODE::SUCCESS},
-        {'D', "dirBZ", "dirBZ", 29, STATUS_CODE::SUCCESS},
-        {'D', "dirCZ", "dirCZ", 30, STATUS_CODE::SUCCESS},
-        {'D', "dirDZ", "dirDZ", 31, STATUS_CODE::SUCCESS},
-        {'D', "dirEZ", "dirEZ", 33, STATUS_CODE::SUCCESS} // Root has max entries, but should be able to create by chaining a dir to root
 
+    std::vector<createType> initCreates = {
+        {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
+        {'D', "dir1", "dir1", 2, STATUS_CODE::SUCCESS},
+        {'D', "dir1/dir2/dir3", "dir3", 4, STATUS_CODE::SUCCESS},
+        {'U', "dir1/dir2/file2", "file2", 5, STATUS_CODE::SUCCESS}
     };
 
-
-    for(auto& test : createTests) {
-        auto startTime = std::chrono::steady_clock::now();
+    for(auto& test : initCreates) 
+    {
+        std::cout << "Creating: " << test.path;
         STATUS_CODE result = testSystem.CREATE(test.type, test.path.c_str());
+        checkEqual("STATUS CHECK", result, test.expectedStatus);
+        std::cout << "nextFreeBlock:" << testSystem.getNextFreeBlock() << std::endl;
+    }
+
+    struct testType{
+        std::string path;
+        STATUS_CODE expectedStatus;
+    };
+
+    std::vector<testType> deleteTests = {
+        {}
+    };
+
+    for(auto& test : deleteTests) 
+    {
+        auto startTime = std::chrono::steady_clock::now();
+        STATUS_CODE result = testSystem.DELETE(test.type, test.path.c_str());
         auto endTime = std::chrono::steady_clock::now();
         auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
         std::cout << "Test| Type: " << test.type << "\tPath: " << test.path << std::endl;
