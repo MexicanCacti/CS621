@@ -167,7 +167,7 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
     if(!inBounds(blockNumber)) return {STATUS_CODE::BAD_COMMAND, ""};
 
     UserDataBlock* block = dynamic_cast<UserDataBlock*>(_blockMap[blockNumber]);
-    //if(!block) return {STATUS_CODE::UNKNOWN_ERROR, "NOTUSERDATA"};
+    if(!block) return {STATUS_CODE::UNKNOWN_ERROR, "NOTUSERDATA"};
     char* data = block->getUserData();
     if(!data) return {STATUS_CODE::UNKNOWN_ERROR, "NODATA"};
     std::string readData(data, bytes);

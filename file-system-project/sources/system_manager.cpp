@@ -169,17 +169,19 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
     unsigned int entryBlockNum = _lastOpened->LINK;
     unsigned int lastBlockNum = _diskManager.getLastBlock(entryBlockNum);
     unsigned int writeStart = 0;
+    std::string writeData = writeBuffer;
+    if(writeData.size() < bytesToWrite)
+    {
+        unsigned int excessBytes = bytesToWrite - writeData.size();
+        writeData.append(excessBytes, ' ');
+    }
+
     if(bytesToWrite <= freeBytesInLastBlock)
     {
-        std::string writeData = writeBuffer;
-        if(writeData.size() > bytesToWrite)
-        {
-            unsigned int excessBytes = writeData.size() - bytesToWrite;
-            writeData.append(excessBytes, ' ');
-        }
        STATUS_CODE status = _diskManager.DWRITE(dynamic_cast<UserDataBlock*>(_diskManager.getBlock(lastBlockNum)), writeData.c_str(), bytesToWrite, bytesInLastBlock, writeStart);
        if(status != STATUS_CODE::SUCCESS) return status;
         _lastOpened->SIZE += bytesToWrite;
+        _filePointer += bytesToWrite;
         return status;
     }
 
@@ -210,7 +212,7 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
         dataBlock->setPrevBlock(lastBlockNum);
         lastBlockNum = newBlock;
         unsigned int bytesThisWrite = std::min(bytesToWrite, USER_DATA_SIZE);
-        status = _diskManager.DWRITE(dataBlock, writeBuffer.c_str(), bytesThisWrite, 0, writeStart);
+        status = _diskManager.DWRITE(dataBlock, writeData.c_str(), bytesThisWrite, 0, writeStart);
         if(status != STATUS_CODE::SUCCESS) return status;
         bytesToWrite -= bytesThisWrite;
         writeStart += bytesThisWrite;
