@@ -67,63 +67,57 @@ int main() {
     DiskManager diskManager(testBlocks, BLOCK_SIZE, USER_DATA_SIZE);
     TestSystemManager testSystem(diskManager, "testRoot");
     
-    struct createType {
-        char type;
-        std::string path;
-        std::string name;
-        unsigned int expectedBlock;
+    struct testType {
+        unsigned int numBytes;
+        std::string writeBuffer;
         STATUS_CODE expectedStatus;
     };
+    // CREATE operations
+    // {type, name, expectedBlock, expectedStatus}
+    // TODO: 
+    // Add test to check that won't create chain if not enough room for chain + directory
+    testSystem.CREATE('U', "file1");
+    testSystem.CREATE('U', "dir1/file2");
 
-    std::vector<createType> initCreates = {
-        {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
-        {'D', "dir1", "dir1", 2, STATUS_CODE::SUCCESS},
-        {'D', "dir1/dir2/dir3", "dir3", 4, STATUS_CODE::SUCCESS},
-        {'U', "dir1/dir2/file2", "file2", 5, STATUS_CODE::SUCCESS}
+    testSystem.OPEN('U', "file1");
+
+    std::vector<testType> writeTests = {
+        {100, "Hello, World! This is a test string to write to the file.", STATUS_CODE::SUCCESS},
+        {600, "This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.", STATUS_CODE::SUCCESS},
+        {50, "Short write.", STATUS_CODE::SUCCESS}
     };
 
-    for(auto& test : initCreates) 
-    {
-        std::cout << "Creating: " << test.path;
-        STATUS_CODE result = testSystem.CREATE(test.type, test.path.c_str());
-        checkEqual("STATUS CHECK", result, test.expectedStatus);
-        std::cout << "nextFreeBlock:" << testSystem.getNextFreeBlock() << std::endl;
-    }
-
-    struct testType{
-        std::string path;
-        unsigned int nextFreeBlock;
-        STATUS_CODE expectedStatus;
+    std::vector<testType> readTests = {
+        {100, "Hello, World! This is a test string to write to the file.", STATUS_CODE::SUCCESS},
+        {700, "Hello World! This is a test string to write to the file. This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.", STATUS_CODE::SUCCESS},
+        {750, "Hello World! This is a test string to write to the file. This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.Short write.", STATUS_CODE::SUCCESS}
     };
 
-    std::vector<testType> deleteTests = {
-        {"notapath", 6, STATUS_CODE::NO_FILE_FOUND},
-        {"dir1/dir2/file2", 5, STATUS_CODE::SUCCESS},
-        {"dir1/dir2/file2", 5, STATUS_CODE::NO_FILE_FOUND},
-        {"dir1/dir2", 3, STATUS_CODE::SUCCESS},
-        {"dir1/dir2", 3, STATUS_CODE::NO_FILE_FOUND},
-        {"dir1/dir2/dir3", 3, STATUS_CODE::NO_FILE_FOUND},
-        {"dir1/dir3", 3, STATUS_CODE::NO_FILE_FOUND},
-        {"file1", 1, STATUS_CODE::SUCCESS}
-    };
-
-    for(auto& test : deleteTests) 
-    {
+    for(auto& test : writeTests) {
         auto startTime = std::chrono::steady_clock::now();
-        STATUS_CODE result = testSystem.DELETE(test.path);
+        STATUS_CODE result = testSystem.WRITE(test.numBytes, test.writeBuffer);
         auto endTime = std::chrono::steady_clock::now();
         auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-        std::cout << "Test|Path: " << test.path << std::endl;
+        std::cout << "Test| NumBytes: " << test.numBytes << "\tWriteBuffer: " << test.writeBuffer << std::endl;
         std::cout << "Time Taken: " << timeTaken << " Microseconds" << std::endl;
         checkEqual("STATUS CHECK", result, test.expectedStatus);
-        if(test.expectedStatus == STATUS_CODE::SUCCESS){
-            Entry* entry = testSystem.getEntry();
-            checkEqual("Next Free Block Check", testSystem.getNextFreeBlock(), test.nextFreeBlock);
-        }
-
     }
-
     printSummary();
 
-    return (testsFailed == 0) ? 0 : 1;
+    std::cout << "FileType: " << testSystem.getEntry()->TYPE << std::endl;
+    testsPassed = 0;
+    testsFailed = 0;
+    for(auto& test : readTests) {
+        auto startTime = std::chrono::steady_clock::now();
+        auto [result, readBuffer] = testSystem.READ(test.numBytes);
+        auto endTime = std::chrono::steady_clock::now();
+        auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+        std::cout << "Test| NumBytes: " << test.numBytes << "\tReadBuffer: " << readBuffer << std::endl;
+        std::cout << "Time Taken: " << timeTaken << " Microseconds" << std::endl;
+        checkEqual("STATUS CHECK", result, test.expectedStatus);
+        if(result == STATUS_CODE::SUCCESS){
+            checkEqual("READ BUFFER CHECK", readBuffer, test.writeBuffer);
+        }
+    }
+    printSummary();
 }

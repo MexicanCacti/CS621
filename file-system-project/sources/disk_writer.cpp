@@ -1,8 +1,24 @@
 #include "../headers/disk_writer.hpp"
 #include "../headers/disk_manager.hpp"
-#include <iostream>
-STATUS_CODE const DiskWriter::writeToBlock(const unsigned int& blockNumber, const char* data, const int& bytes)
+STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char* data, const int& bytes, const int& startByte, const unsigned int& bufferStart)
 {
+    if(!dataBlock || !data) return STATUS_CODE::UNKNOWN_ERROR;
+    if(startByte >= _diskManager.getBlockSize()) return STATUS_CODE::UNKNOWN_ERROR;
+    char* userData = dataBlock->getUserData();
+    char tempData [USER_DATA_SIZE];
+
+    for(int i = 0 ; i < startByte; ++i)
+    {
+        tempData[i] = userData[i];
+    }
+
+    for(int i = 0 ; i < bytes; ++i)
+    {
+        tempData[i + startByte] = data[i + bufferStart];
+    }
+
+    dataBlock->setUserData(tempData);
+
     return STATUS_CODE::SUCCESS;
 }
 

@@ -65,6 +65,10 @@
         "xutility": "cpp",
         "iostream": "cpp",
         "stop_token": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "map": "cpp",
+        "mutex": "cpp",
+        "xstddef": "cpp",
+        "xtree": "cpp"
     }
 }
