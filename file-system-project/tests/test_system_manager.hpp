@@ -3,7 +3,8 @@
 #include <iostream>
 #include <algorithm>
 class TestSystemManager : public SystemManager {
-
+    private:
+        DirectoryBlock* _rootBlock;
     public:
         TestSystemManager(DiskManager& diskManager, const std::string& rootName) : SystemManager(diskManager, rootName) {};
         void setEntry(Entry* entry) {

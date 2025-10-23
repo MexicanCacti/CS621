@@ -1,6 +1,7 @@
 #pragma once
 #include "../headers/disk_manager.hpp"
 #include "../utils/write_result.hpp"
+#include "../utils/directory_results.hpp"
 #include <deque>
 #include <algorithm>
 
@@ -10,9 +11,10 @@ class SystemManager{
         Entry* _lastOpened = nullptr;
         char _fileMode = 'I';
         unsigned int _filePointer = 0;
-        DirectoryBlock* _rootBlock = nullptr;
 
         std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
+        DirectoryResults getDirectories();
+        void outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<entryPair>>& directoryEntries);
         SystemManager() = delete;
     public:
         SystemManager(DiskManager& diskManager, const std::string& rootName);
@@ -23,4 +25,5 @@ class SystemManager{
         std::pair<STATUS_CODE, std::string> READ(const unsigned int& numBytes);
         STATUS_CODE WRITE(const int& numBytes, const std::string& writeBuffer);
         STATUS_CODE SEEK(const int& base, const int& offset);
+        void displayFileSystem();
 };

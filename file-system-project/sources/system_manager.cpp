@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 
 std::deque<std::string> SystemManager::tokenizeString(const std::string& str, const char& delim)
 {
@@ -17,6 +18,73 @@ std::deque<std::string> SystemManager::tokenizeString(const std::string& str, co
 
     return nameBufferQueue;
 }
+
+DirectoryResults SystemManager::getDirectories()
+{
+    std::queue<unsigned int> dirOrder;
+    std::queue<std::string> dirNames;
+    std::queue<std::pair<unsigned int, std::string>> dirQueue;
+    dirQueue.push({0, "ROOT"});
+
+    while(!dirQueue.empty()){
+        unsigned int queueSize = dirQueue.size();
+        for(unsigned int i = 0 ; i < queueSize; ++i)
+        {
+            auto[dirBlockNumber, dirName] = dirQueue.front();
+            dirQueue.pop();
+            dirOrder.push(dirBlockNumber);
+            dirNames.push(dirName);
+            DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(dirBlockNumber));
+            if(!dirBlock) return {dirOrder, dirNames, UNKNOWN_ERROR};
+
+            for(dirBlock; 
+                dirBlock != nullptr; 
+                dirBlock = (dirBlock->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(dirBlock->getNextBlock())) : nullptr)
+            {
+                auto dir = dirBlock->getDir();
+                for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+                    Entry& e = dir[i];
+                    if(e.TYPE == 'D')
+                    {
+                        dirQueue.push({e.LINK, e.NAME});
+                    }
+                }
+            }
+        }
+    }
+    return {dirOrder, dirNames, SUCCESS};
+}
+
+void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<entryPair>>& directoryEntries)
+{
+    const int dirWidth = MAX_NAME_LENGTH + 2;
+    const int entryWidth = MAX_NAME_LENGTH + 2;
+    const int typeWidth = 4;
+    std::cout << std::left << "Note: |x| indicates no entries in directory\n";
+    std::cout << std::setw(dirWidth) << "Directory" << std::setw(entryWidth) << "Entry" << std::setw(typeWidth) << "Type" << std::endl;
+    std::cout << std::string(dirWidth + entryWidth + typeWidth, '-') << std::endl;
+    unsigned int numDirs = directoryEntries.size();
+    for (unsigned int i = 0; i < numDirs; ++i)
+    {
+        std::string& dirName = dirNames[i];
+        std::vector<entryPair>& entries = directoryEntries[i];
+
+        if (entries.empty())
+        {
+            std::cout << std::setw(dirWidth) << dirName << std::setw(entryWidth) << "|x|" << std::setw(typeWidth) << "|x|" << std::endl;
+        }
+        else
+        {
+            for (unsigned int j = 0; j < entries.size(); ++j)
+            {
+                if (j == 0) std::cout << std::setw(dirWidth) << dirName << std::setw(entryWidth) << entries[j].first << std::setw(typeWidth) << entries[j].second << std::endl;
+                else std::cout << std::setw(dirWidth) << "" << std::setw(entryWidth) << entries[j].first << std::setw(typeWidth) << entries[j].second << std::endl;
+            }
+        }
+    }
+    std::cout << std::string(dirWidth + entryWidth + typeWidth, '-') << std::endl;
+}
+
 
 SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootName) :
                 _diskManager(diskManager)
@@ -287,5 +355,54 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
 
     _filePointer = seekByte;
     return STATUS_CODE::SUCCESS;
+}
 
+void SystemManager::displayFileSystem()
+{
+    DirectoryResults directoryResults = getDirectories();
+    if(directoryResults.status != SUCCESS)
+    {
+        std::cout << "[ERROR]: COULD NOT GET DIRECTORIES IN FILE SYSTEM!" << std::endl;
+        return;
+    }
+    std::queue<unsigned int>& dirOrder = directoryResults.directoryOrder;
+    std::queue<std::string>& dirNames = directoryResults.directoryName;
+
+    unsigned int numDirectories = dirOrder.size();
+
+    std::vector<std::string> directoryNames(numDirectories);
+    std::vector<std::vector<entryPair>> directoryEntries(numDirectories);
+
+    unsigned int index = 0;
+    while(!dirOrder.empty())
+    {
+        unsigned int blockNum = dirOrder.front();
+        std::string dirName = dirNames.front();
+        dirOrder.pop();
+        dirNames.pop();
+        directoryNames[index] = dirName;
+        std::vector<entryPair>& entryList = directoryEntries[index];
+        DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(blockNum));
+        if(!dirBlock)
+        {
+            std::cout << "[ERROR]: COULD NOT GET DIRECTORY BLOCK " << blockNum << std::endl;
+            return;
+        }
+
+        for(dirBlock; 
+            dirBlock != nullptr; 
+            dirBlock = (dirBlock->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(dirBlock->getNextBlock())) : nullptr)
+        {
+            auto dir = dirBlock->getDir();
+            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+                Entry& e = dir[i];
+                if(e.TYPE != 'F')
+                {
+                    entryList.push_back({e.NAME, e.TYPE});
+                }
+            }
+        }
+        index++;
+    }
+    outputFileSystem(directoryNames, directoryEntries);
 }

@@ -145,6 +145,7 @@ int main() {
     }
 
     printSummary();
+    testSystem.displayFileSystem();
 
     return (testsFailed == 0) ? 0 : 1;
 }
