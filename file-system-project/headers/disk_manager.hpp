@@ -2,8 +2,10 @@
 #include "../headers/block.hpp"
 #include "../headers/directory_block.hpp"
 #include "../headers/user_data_block.hpp"
+#include "../utils/constants.hpp"
 #include <unordered_map>
 #include <string>
+#include <deque>
 #include "../utils/status_codes.hpp"
 #include "../utils/search_result.hpp"
 #include "../utils/write_result.hpp"
