@@ -137,89 +137,130 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
 {
     if(_fileMode != 'U') return {STATUS_CODE::BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {STATUS_CODE::NO_FILE_OPEN, "NOFILEOPEN"};
+
     std::string readData = "";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(_lastOpened->LINK));
     if(!dataBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NOLINKTODATABLOCK"};
-    unsigned int blockNum = _lastOpened->LINK;
+
     unsigned int readBytes = numBytes;
+    unsigned int pointerBlock = _filePointer / USER_DATA_SIZE + 1;
+    unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;
+    unsigned int readBlock = _lastOpened->LINK;
+
+    for(int i = 0 ; i < pointerBlock - 1; ++i)
+    {
+        readBlock = dataBlock->getNextBlock();
+        if(readBlock == 0) return {STATUS_CODE::ILLEGAL_ACCESS, "POINTEROUTOFBOUNDS"};
+        Block* nextBlock = _diskManager.getBlock(dataBlock->getNextBlock());
+        if(!nextBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NEXTDATABLOCKNULL"};
+        dataBlock = dynamic_cast<UserDataBlock*>(nextBlock);
+    }
+    unsigned int readStart = pointerOffset;
     while(dataBlock && readBytes > 0)
     {
         unsigned int bytesInBlock = dataBlock->getUserDataSize();
-        unsigned int bytesToRead = std::min(readBytes, bytesInBlock);
-        auto[status, readBuffer] = _diskManager.DREAD(blockNum, bytesToRead);
+        unsigned int bytesToRead = std::min(readBytes, bytesInBlock - readStart);
+        auto[status, readBuffer] = _diskManager.DREAD(readBlock, bytesToRead, readStart);
         if(status != STATUS_CODE::SUCCESS) return {status, readBuffer};
         readData.append(readBuffer);
         readBytes -= bytesToRead;
-
-        (dataBlock->getNextBlock() == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(dataBlock->getNextBlock()));
-        blockNum = dataBlock ? dataBlock->getNextBlock() : 0;
+        readBlock = dataBlock->getNextBlock();
+        if(readBytes <= 0 || readBlock == 0) break;
+        (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(readBlock));
+        readStart = 0;
     }
-
     return {STATUS_CODE::SUCCESS, readData};
 }
 
-// NOTE: UPDATE WITH FILE POINTER!
 STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBuffer)
 {
     if(_fileMode != 'O' && _fileMode != 'U') return STATUS_CODE::BAD_FILE_MODE;
     if(!_lastOpened) return STATUS_CODE::NO_FILE_OPEN;
-    unsigned int bytesToWrite = numBytes;
-    unsigned int bytesInLastBlock = _lastOpened->SIZE;
-    unsigned int freeBytesInLastBlock = USER_DATA_SIZE - bytesInLastBlock;
-    unsigned int entryBlockNum = _lastOpened->LINK;
-    unsigned int lastBlockNum = _diskManager.getLastBlock(entryBlockNum);
-    unsigned int writeStart = 0;
-    std::string writeData = writeBuffer;
-    if(writeData.size() < bytesToWrite)
+    unsigned int pointerBlock = _filePointer / USER_DATA_SIZE;
+    unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;
+    
+    unsigned int writeBlock = _lastOpened->LINK;
+    unsigned int writeStart = pointerOffset;
+    UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
+    if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
+
+    for(unsigned int i = 0 ; i < pointerBlock; ++i)
     {
-        unsigned int excessBytes = bytesToWrite - writeData.size();
+        writeBlock = currentBlock->getNextBlock();
+        if(writeBlock == 0) return STATUS_CODE::ILLEGAL_ACCESS;
+        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
+        if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
+    }
+
+    std::string writeData = writeBuffer;
+    if(writeData.size() < numBytes)
+    {
+        unsigned int excessBytes = numBytes - writeData.size();
         writeData.append(excessBytes, ' ');
     }
 
-    if(bytesToWrite <= freeBytesInLastBlock)
+    unsigned int bytesUpToPointer = pointerBlock * USER_DATA_SIZE + pointerOffset;
+    unsigned int totalBytesAllocated = _diskManager.countNumBlocks(_lastOpened->LINK) * USER_DATA_SIZE;
+    unsigned int freeBytes = totalBytesAllocated - bytesUpToPointer;
+    unsigned int bytesToWrite = numBytes;
+    unsigned int bufferStart = 0;
+
+    if(bytesToWrite <= freeBytes)
     {
-       STATUS_CODE status = _diskManager.DWRITE(dynamic_cast<UserDataBlock*>(_diskManager.getBlock(lastBlockNum)), writeData.c_str(), bytesToWrite, bytesInLastBlock, writeStart);
-       if(status != STATUS_CODE::SUCCESS) return status;
-        _lastOpened->SIZE += bytesToWrite;
-        _filePointer += bytesToWrite;
-        return status;
+        while(currentBlock && bytesToWrite > 0)
+        {
+            unsigned int writeAmount = std::min(USER_DATA_SIZE, bytesToWrite);
+            STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
+            if(status != STATUS_CODE::SUCCESS) return status;
+            bytesToWrite = bytesToWrite - writeAmount;
+            bufferStart += writeAmount;
+            if(currentBlock->getNextBlock() == 0)
+            {
+                _lastOpened->SIZE = std::max(_lastOpened->SIZE, writeAmount);
+                break;
+            }
+            currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(currentBlock->getNextBlock()));
+            writeStart = 0;
+        }
+        return STATUS_CODE::SUCCESS;
     }
 
-    unsigned int blocksNeeded = ceil((bytesToWrite - freeBytesInLastBlock) / USER_DATA_SIZE);
+    unsigned int blocksNeeded = ceil((bytesToWrite - freeBytes) / USER_DATA_SIZE);
     unsigned int numFreeBlocks = _diskManager.getNumFreeBlocks();
     if(numFreeBlocks == 0) return STATUS_CODE::OUT_OF_MEMORY;
+
     while(blocksNeeded > numFreeBlocks){
         blocksNeeded--;
         bytesToWrite -= USER_DATA_SIZE;
     }
-    // Fill the last block
-    UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(lastBlockNum));
-    if(!dataBlock) return STATUS_CODE::UNKNOWN_ERROR;
-    STATUS_CODE status = _diskManager.DWRITE(dataBlock, writeBuffer.c_str(), freeBytesInLastBlock, bytesInLastBlock, writeStart);
-    if(status != STATUS_CODE::SUCCESS) return status;
-    bytesToWrite -= freeBytesInLastBlock;
-    writeStart += freeBytesInLastBlock;
-    _lastOpened->SIZE += freeBytesInLastBlock;
 
-    // Now allocate and write to new blocks.
-    while(bytesToWrite > 0)
-    {
+    // Fill Last Block
+    unsigned int writeAmount = freeBytes;
+    STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
+    if(status != STATUS_CODE::SUCCESS) return status;
+    bytesToWrite -= writeAmount;
+    bufferStart += writeAmount;
+    writeStart = 0;
+
+    // Now Allocate & fill
+    while(currentBlock && bytesToWrite > 0)
+    {   
+        // Note: Create function that will auto chain the new block? DWRITE overload?
         auto [allocStatus, newBlock] = _diskManager.allocateBlock('U');
         if(allocStatus != STATUS_CODE::SUCCESS) return allocStatus;
-        dataBlock->setNextBlock(newBlock);
-        dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(newBlock));
-        if(!dataBlock) return STATUS_CODE::UNKNOWN_ERROR;
-        dataBlock->setPrevBlock(lastBlockNum);
-        lastBlockNum = newBlock;
-        unsigned int bytesThisWrite = std::min(bytesToWrite, USER_DATA_SIZE);
-        status = _diskManager.DWRITE(dataBlock, writeData.c_str(), bytesThisWrite, 0, writeStart);
-        if(status != STATUS_CODE::SUCCESS) return status;
-        bytesToWrite -= bytesThisWrite;
-        writeStart += bytesThisWrite;
-        _lastOpened->SIZE = bytesThisWrite;
-    }
+        currentBlock->setNextBlock(newBlock);
+        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(newBlock));
+        if(!currentBlock) return STATUS_CODE::UNKNOWN_ERROR;
+        currentBlock->setPrevBlock(writeBlock);
+        writeBlock = newBlock;
 
-    return status;
+        writeAmount = std::min(USER_DATA_SIZE, bytesToWrite);
+        STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
+        if(status != STATUS_CODE::SUCCESS) return status;
+        bytesToWrite = bytesToWrite - writeAmount;
+        bufferStart += writeAmount;
+    }
+    return STATUS_CODE::SUCCESS;
 }
 
 STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
@@ -228,9 +269,9 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
     if(!_lastOpened) return STATUS_CODE::NO_FILE_OPEN;
     if(base < -1 || base > 1) return STATUS_CODE::BAD_COMMAND;
     unsigned int numBlocks = _diskManager.countNumBlocks(_lastOpened->LINK);
-    unsigned int totalBytes = numBlocks * 504;
+    unsigned int totalBytes = numBlocks * USER_DATA_SIZE;
 
-    unsigned int lastByte = totalBytes - (504 - _lastOpened->SIZE);
+    unsigned int lastByte = totalBytes - (USER_DATA_SIZE - _lastOpened->SIZE);
     unsigned int startByte = _filePointer;
 
     if(base == -1){

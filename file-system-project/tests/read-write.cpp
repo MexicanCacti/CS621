@@ -32,13 +32,13 @@ void checkEqual(const std::string& testName, unsigned int actual, unsigned int e
     }
 }
 
-void checkEqual(const std::string& testName, std::string actualName, std::string expectedName){
-    if (strcmp(actualName.c_str(), expectedName.c_str()) == 0) {
-        std::cout << "[PASS]: " << testName << " got " << actualName << "\n";
+void checkEqual(const std::string& testName, std::string actualString, std::string expectedString){
+    if (strcmp(actualString.c_str(), expectedString.c_str()) == 0) {
+        std::cout << "[PASS]: " << testName << " got " << actualString << "\n";
         testsPassed++;
     } else {
-        std::cout << "[FAIL]: " << testName << " expected " << expectedName;
-        std::cout << ", but got " << actualName << "\n";
+        std::cout << "[FAIL]: " << testName << " expected\n" << expectedString;
+        std::cout << "\nbut got\n" << actualString << "\n";
         testsFailed++;
     }
 }
@@ -82,28 +82,60 @@ int main() {
     testSystem.OPEN('U', "file1");
 
     std::vector<testType> writeTests = {
-        {100, "Hello, World! This is a test string to write to the file.", STATUS_CODE::SUCCESS},
-        {600, "This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.", STATUS_CODE::SUCCESS},
-        {50, "Short write.", STATUS_CODE::SUCCESS}
+        {
+            108,
+            "This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here.",
+            STATUS_CODE::SUCCESS
+        },
+        {
+            496,
+            "This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
+            "It repeats sentences to ensure precise byte length. Each sentence adds predictable characters. The goal is to simulate a long "
+            "user file stored across several chained blocks. Consistency matters more than meaning in this test, but the text remains human "
+            "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now.",
+            STATUS_CODE::SUCCESS
+        },
+        {
+            58,
+            "Fifty bytes of short data used for quick write tests only.",
+            STATUS_CODE::SUCCESS
+        }
     };
 
     std::vector<testType> readTests = {
-        {100, "Hello, World! This is a test string to write to the file.", STATUS_CODE::SUCCESS},
-        {700, "Hello World! This is a test string to write to the file. This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.", STATUS_CODE::SUCCESS},
-        {750, "Hello World! This is a test string to write to the file. This is a longer test string that exceeds the user data size of a single block. It should span multiple blocks in the file system. Let's add more text to ensure it goes over the limit. Adding even more text to make sure we have enough data to test the multi-block writing functionality properly.Short write.", STATUS_CODE::SUCCESS}
+        {
+            108, 
+            "This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here.", 
+            STATUS_CODE::SUCCESS,
+        },
+        {
+            496,   
+            "This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
+            "It repeats sentences to ensure precise byte length. Each sentence adds predictable characters. The goal is to simulate a long "
+            "user file stored across several chained blocks. Consistency matters more than meaning in this test, but the text remains human "
+            "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now.", 
+            STATUS_CODE::SUCCESS
+        },
+        {
+            58, 
+            "Fifty bytes of short data used for quick write tests only.",
+            STATUS_CODE::SUCCESS
+        }
     };
 
     for(auto& test : writeTests) {
+        std::cout << "Test| NumBytes: " << test.writeBuffer.size() << "\tWriteBuffer: " << test.writeBuffer << std::endl;
         auto startTime = std::chrono::steady_clock::now();
-        STATUS_CODE result = testSystem.WRITE(test.numBytes, test.writeBuffer);
+        STATUS_CODE result = testSystem.WRITE(test.writeBuffer.size(), test.writeBuffer);
         auto endTime = std::chrono::steady_clock::now();
         auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-        std::cout << "Test| NumBytes: " << test.numBytes << "\tWriteBuffer: " << test.writeBuffer << std::endl;
         std::cout << "Time Taken: " << timeTaken << " Microseconds" << std::endl;
         checkEqual("STATUS CHECK", result, test.expectedStatus);
+        testSystem.SEEK(0, test.numBytes);
     }
     printSummary();
 
+    testSystem.SEEK(-1,0);
     std::cout << "FileType: " << testSystem.getEntry()->TYPE << std::endl;
     testsPassed = 0;
     testsFailed = 0;
@@ -118,6 +150,22 @@ int main() {
         if(result == STATUS_CODE::SUCCESS){
             checkEqual("READ BUFFER CHECK", readBuffer, test.writeBuffer);
         }
+        testSystem.SEEK(0, test.numBytes);
+    }
+
+    std::string entireFile =
+        "This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here."
+        "This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
+        "It repeats sentences to ensure precise byte length. Each sentence adds predictable characters. The goal is to simulate a long "
+        "user file stored across several chained blocks. Consistency matters more than meaning in this test, but the text remains human "
+        "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now."
+        "Fifty bytes of short data used for quick write tests only.";
+
+    std::cout << "\nENTIRE FILE CHECK" << std::endl;
+    auto [readAllResult, readAllBuffer] = testSystem.READALL();
+    checkEqual("STATUS CHECK", readAllResult, STATUS_CODE::SUCCESS);
+    if(readAllResult == STATUS_CODE::SUCCESS){
+        checkEqual("READ BUFFER CHECK", readAllBuffer, entireFile);
     }
     printSummary();
 }

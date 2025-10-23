@@ -1,7 +1,7 @@
 #pragma once
 #include "../headers/system_manager.hpp"
 #include <iostream>
-
+#include <algorithm>
 class TestSystemManager : public SystemManager {
 
     public:
@@ -18,4 +18,8 @@ class TestSystemManager : public SystemManager {
         unsigned int const getFilePointer() { return _filePointer;}
         SearchResult findCreatedFile(const std::string& filePath);
         unsigned int getNextFreeBlock();
+        //std::pair<STATUS_CODE, std::string> READ(const unsigned int& numBytes);
+        std::pair<STATUS_CODE, std::string> READALL();
+        //STATUS_CODE WRITE(const int& numBytes, const std::string& writeBuffer);
+
 };

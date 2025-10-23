@@ -174,6 +174,22 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
     return {STATUS_CODE::SUCCESS, readData};
 }
 
+std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes, const int& startByte)
+{
+     if(!inBounds(blockNumber)) return {STATUS_CODE::BAD_COMMAND, ""};
+
+    UserDataBlock* block = dynamic_cast<UserDataBlock*>(_blockMap[blockNumber]);
+    if(!block) return {STATUS_CODE::UNKNOWN_ERROR, "NOTUSERDATA"};
+    char* data = block->getUserData();
+    if(!data) return {STATUS_CODE::UNKNOWN_ERROR, "NODATA"};
+    if(startByte < 0 || startByte >= _userDataSize) 
+        return {STATUS_CODE::ILLEGAL_ACCESS, ""};
+
+    unsigned int readableBytes = std::min(bytes, _userDataSize - startByte);
+    std::string readData(data + startByte, readableBytes);
+    return {STATUS_CODE::SUCCESS, readData};
+}
+
 // Write any block to disk
 STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 {
