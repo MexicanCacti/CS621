@@ -35,7 +35,7 @@ DirectoryResults SystemManager::getDirectories()
             dirOrder.push(dirBlockNumber);
             dirNames.push(dirName);
             DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(dirBlockNumber));
-            if(!dirBlock) return {dirOrder, dirNames, UNKNOWN_ERROR};
+            if(!dirBlock) return {dirOrder, dirNames, CASTING_ERROR};
 
             for(dirBlock; 
                 dirBlock != nullptr; 
@@ -94,7 +94,7 @@ SystemManager::SystemManager(DiskManager& diskManager, const std::string& rootNa
 
 STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffer)
 {
-    if(type != 'U' && type != 'D') return STATUS_CODE::INVALID_TYPE;
+    if(type != 'U' && type != 'D') return BAD_TYPE;
     std::deque<std::string> fullPath = tokenizeString(nameBuffer, PATH_DELIMITER);
     std::deque<std::string> fullPathCopy = fullPath; // To keep full path intact since findFile modifies the deque
     std::string fileName = fullPath.back();
@@ -105,15 +105,15 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
 
     WriteResult writeResult;
     // Found file with same name in last directory of given path
-    if(status == STATUS_CODE::SUCCESS)
+    if(status == SUCCESS)
     {
         writeResult = _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
-        if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
+        if(writeResult.status != SUCCESS) return writeResult.status;
         _lastOpened = writeResult.entry;
         _fileMode = 'O';
         return writeResult.status;
     }
-    else if(status == STATUS_CODE::NO_FILE_FOUND)
+    else if(status == NO_FILE_FOUND)
     {
         // No file exists with same name
         // Check how many directories of given path don't exist. Will need to create that many directories
@@ -125,7 +125,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
             existingPathBufferQueue.push_back(component);
             auto probePath = existingPathBufferQueue;
             SearchResult searchResult = _diskManager.findFile(probePath);
-            if(searchResult.statusCode != STATUS_CODE::SUCCESS) 
+            if(searchResult.statusCode != SUCCESS) 
             {
                 needToCreate.push_back(component);
                 auto it = std::find(fullPathCopy.begin(), fullPathCopy.end(), component);
@@ -134,15 +134,15 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
                 break;
             }
             else{
-                if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return STATUS_CODE::ILLEGAL_ACCESS;
+                if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return ILLEGAL_ACCESS;
             }
         }
         
         int numNeededFreeBlocks = needToCreate.size();
-        if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return STATUS_CODE::OUT_OF_MEMORY;
+        if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return OUT_OF_MEMORY;
         writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
 
-        if(writeResult.status != STATUS_CODE::SUCCESS) return writeResult.status;
+        if(writeResult.status != SUCCESS) return writeResult.status;
         _lastOpened = writeResult.entry;
         _fileMode = 'O';
         return writeResult.status;
@@ -160,7 +160,7 @@ STATUS_CODE SystemManager::OPEN(const char& mode, const std::string& nameBuffer)
     STATUS_CODE status = searchResult.statusCode;
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
-    if(!parentDir) return STATUS_CODE::NO_FILE_FOUND;
+    if(!parentDir) return NO_FILE_FOUND;
 
     _lastOpened = &parentDir->getDir()[entryIndex];
     _fileMode = mode;
@@ -170,14 +170,14 @@ STATUS_CODE SystemManager::OPEN(const char& mode, const std::string& nameBuffer)
         _filePointer = _diskManager.countNumBlocks(_lastOpened->LINK) * 504 - (504 - _lastOpened->SIZE);
     }
 
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 STATUS_CODE SystemManager::CLOSE()
 {
     _lastOpened = nullptr;
 
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
@@ -188,7 +188,7 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
 
-    if(!parentDir) return STATUS_CODE::NO_FILE_FOUND;
+    if(!parentDir) return NO_FILE_FOUND;
     Entry* toDelete = &parentDir->getDir()[entryIndex];
     _diskManager.freeBlock(toDelete->LINK);
     toDelete->TYPE = 'F';
@@ -198,17 +198,17 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
         _fileMode = 'I';
         _filePointer = 0;
     }
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numBytes)
 {
-    if(_fileMode != 'U') return {STATUS_CODE::BAD_FILE_MODE, "BADFILEMODE"};
-    if(!_lastOpened) return {STATUS_CODE::NO_FILE_OPEN, "NOFILEOPEN"};
+    if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
+    if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
 
     std::string readData = "";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(_lastOpened->LINK));
-    if(!dataBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NOLINKTODATABLOCK"};
+    if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
 
     unsigned int readBytes = numBytes;
     unsigned int pointerBlock = _filePointer / USER_DATA_SIZE + 1;
@@ -218,9 +218,9 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
     for(int i = 0 ; i < pointerBlock - 1; ++i)
     {
         readBlock = dataBlock->getNextBlock();
-        if(readBlock == 0) return {STATUS_CODE::ILLEGAL_ACCESS, "POINTEROUTOFBOUNDS"};
+        if(readBlock == 0) return {ILLEGAL_ACCESS, "POINTEROUTOFBOUNDS"};
         Block* nextBlock = _diskManager.getBlock(dataBlock->getNextBlock());
-        if(!nextBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NEXTDATABLOCKNULL"};
+        if(!nextBlock) return {CASTING_ERROR, "NEXTDATABLOCKNULL"};
         dataBlock = dynamic_cast<UserDataBlock*>(nextBlock);
     }
     unsigned int readStart = pointerOffset;
@@ -229,7 +229,7 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         unsigned int bytesInBlock = dataBlock->getUserDataSize();
         unsigned int bytesToRead = std::min(readBytes, bytesInBlock - readStart);
         auto[status, readBuffer] = _diskManager.DREAD(readBlock, bytesToRead, readStart);
-        if(status != STATUS_CODE::SUCCESS) return {status, readBuffer};
+        if(status != SUCCESS) return {status, readBuffer};
         readData.append(readBuffer);
         readBytes -= bytesToRead;
         readBlock = dataBlock->getNextBlock();
@@ -237,27 +237,27 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(readBlock));
         readStart = 0;
     }
-    return {STATUS_CODE::SUCCESS, readData};
+    return {SUCCESS, readData};
 }
 
 STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBuffer)
 {
-    if(_fileMode != 'O' && _fileMode != 'U') return STATUS_CODE::BAD_FILE_MODE;
-    if(!_lastOpened) return STATUS_CODE::NO_FILE_OPEN;
+    if(_fileMode != 'O' && _fileMode != 'U') return BAD_FILE_MODE;
+    if(!_lastOpened) return NO_FILE_OPEN;
     unsigned int pointerBlock = _filePointer / USER_DATA_SIZE;
     unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;
     
     unsigned int writeBlock = _lastOpened->LINK;
     unsigned int writeStart = pointerOffset;
     UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
-    if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
+    if(!currentBlock) return CASTING_ERROR;
 
     for(unsigned int i = 0 ; i < pointerBlock; ++i)
     {
         writeBlock = currentBlock->getNextBlock();
-        if(writeBlock == 0) return STATUS_CODE::ILLEGAL_ACCESS;
+        if(writeBlock == 0) return ILLEGAL_ACCESS;
         currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
-        if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
+        if(!currentBlock) return CASTING_ERROR;
     }
 
     std::string writeData = writeBuffer;
@@ -279,7 +279,7 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
         {
             unsigned int writeAmount = std::min(USER_DATA_SIZE, bytesToWrite);
             STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
-            if(status != STATUS_CODE::SUCCESS) return status;
+            if(status != SUCCESS) return status;
             bytesToWrite = bytesToWrite - writeAmount;
             bufferStart += writeAmount;
             if(currentBlock->getNextBlock() == 0)
@@ -290,12 +290,12 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
             currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(currentBlock->getNextBlock()));
             writeStart = 0;
         }
-        return STATUS_CODE::SUCCESS;
+        return SUCCESS;
     }
 
     unsigned int blocksNeeded = ceil((bytesToWrite - freeBytes) / USER_DATA_SIZE);
     unsigned int numFreeBlocks = _diskManager.getNumFreeBlocks();
-    if(numFreeBlocks == 0) return STATUS_CODE::OUT_OF_MEMORY;
+    if(numFreeBlocks == 0) return OUT_OF_MEMORY;
 
     while(blocksNeeded > numFreeBlocks){
         blocksNeeded--;
@@ -305,7 +305,7 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
     // Fill Last Block
     unsigned int writeAmount = freeBytes;
     STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
-    if(status != STATUS_CODE::SUCCESS) return status;
+    if(status != SUCCESS) return status;
     bytesToWrite -= writeAmount;
     bufferStart += writeAmount;
     writeStart = 0;
@@ -315,27 +315,27 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
     {   
         // Note: Create function that will auto chain the new block? DWRITE overload?
         auto [allocStatus, newBlock] = _diskManager.allocateBlock('U');
-        if(allocStatus != STATUS_CODE::SUCCESS) return allocStatus;
+        if(allocStatus != SUCCESS) return allocStatus;
         currentBlock->setNextBlock(newBlock);
         currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(newBlock));
-        if(!currentBlock) return STATUS_CODE::UNKNOWN_ERROR;
+        if(!currentBlock) return CASTING_ERROR;
         currentBlock->setPrevBlock(writeBlock);
         writeBlock = newBlock;
 
         writeAmount = std::min(USER_DATA_SIZE, bytesToWrite);
         STATUS_CODE status = _diskManager.DWRITE(currentBlock, writeData.c_str(), writeAmount, writeStart, bufferStart);
-        if(status != STATUS_CODE::SUCCESS) return status;
+        if(status != SUCCESS) return status;
         bytesToWrite = bytesToWrite - writeAmount;
         bufferStart += writeAmount;
     }
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
 {
-    if(_fileMode != 'I' && _fileMode != 'U') return STATUS_CODE::BAD_FILE_MODE;
-    if(!_lastOpened) return STATUS_CODE::NO_FILE_OPEN;
-    if(base < -1 || base > 1) return STATUS_CODE::BAD_COMMAND;
+    if(_fileMode != 'I' && _fileMode != 'U') return BAD_FILE_MODE;
+    if(!_lastOpened) return NO_FILE_OPEN;
+    if(base < -1 || base > 1) return BAD_ARG;
     unsigned int numBlocks = _diskManager.countNumBlocks(_lastOpened->LINK);
     unsigned int totalBytes = numBlocks * USER_DATA_SIZE;
 
@@ -354,7 +354,7 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
     if(static_cast<unsigned int>(seekByte) > lastByte) seekByte = lastByte;
 
     _filePointer = seekByte;
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 void SystemManager::displayFileSystem()

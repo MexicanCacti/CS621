@@ -79,7 +79,7 @@ int main() {
     // TODO: 
     // Add test to check that won't create chain if not enough room for chain + directory
     std::vector<testType> createTests = {
-        {'Z', "file1", "file1", 1, STATUS_CODE::INVALID_TYPE},
+        {'Z', "file1", "file1", 1, STATUS_CODE::BAD_TYPE},
         {'D', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'U', "file1", "file1", 1, STATUS_CODE::SUCCESS},
         {'D', "dirA/dirB", "dirB", 3, STATUS_CODE::SUCCESS},
@@ -88,8 +88,8 @@ int main() {
         {'D', "dirA/dirB/dirC/dirD", "dirD", 5, STATUS_CODE::ILLEGAL_ACCESS},
         {'U', "dirA/dirB", "dirB", 5, STATUS_CODE::ILLEGAL_ACCESS},
         {'D', "dirA", "dirA", 2, STATUS_CODE::SUCCESS},
-        {'D', "12345678910", "12345678910", 3 , STATUS_CODE::BAD_COMMAND},
-        {'D', "dirA/12345678910", "12345678910", 3, STATUS_CODE::BAD_COMMAND},
+        {'D', "12345678910", "12345678910", 3 , STATUS_CODE::BAD_NAME_LENGTH},
+        {'D', "dirA/12345678910", "12345678910", 3, STATUS_CODE::BAD_NAME_LENGTH},
         {'D', "dirB", "dirB", 3, STATUS_CODE::SUCCESS},
         {'D', "dirC", "dirC", 4, STATUS_CODE::SUCCESS},
         {'D', "dirD", "dirD", 5, STATUS_CODE::SUCCESS},

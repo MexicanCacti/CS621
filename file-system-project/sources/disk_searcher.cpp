@@ -2,14 +2,14 @@
 #include "../headers/disk_manager.hpp"
 
 SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
-    if(nameBuffer.empty()) return {BAD_COMMAND, nullptr, 0};
+    if(nameBuffer.empty()) return {BAD_ARG, nullptr, 0};
     
     DirectoryBlock* currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(0));
-    if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
+    if(!currentDir) return {CASTING_ERROR, nullptr, 0};
 
     while(!nameBuffer.empty()) {
         std::string currentName = nameBuffer.front();
-        if(currentName.length() > MAX_NAME_LENGTH) return {BAD_COMMAND, nullptr, 0};
+        if(currentName.length() > MAX_NAME_LENGTH) return {BAD_NAME_LENGTH, nullptr, 0};
         bool found = false;
 
         for(DirectoryBlock* dir = currentDir; 
@@ -23,7 +23,7 @@ SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
                     if(nameBuffer.empty()) return {SUCCESS, dir, i};
                     if(e.TYPE == 'D') {
                         currentDir = dynamic_cast<DirectoryBlock*>(_diskManager._blockMap[e.LINK]);
-                        if(!currentDir) return {ILLEGAL_ACCESS, nullptr, 0};
+                        if(!currentDir) return {CASTING_ERROR, nullptr, 0};
                         found = true;
                         break;
                     }

@@ -101,16 +101,16 @@ int main() {
         seekString += " OFFSET = ";
         seekString += std::to_string(offset);
         if(base <-1 || base > 1) {
-            checkEqual(seekString, result, STATUS_CODE::BAD_COMMAND);
+            checkEqual(seekString, result, BAD_ARG);
             std::cout << "Time Taken: " << timeTaken << " Nanoseconds\n" << std::endl;
             continue;
         }
 
         if(expected == -1) {
-            checkEqual(seekString, result, STATUS_CODE::ILLEGAL_ACCESS);
+            checkEqual(seekString, result, BAD_ARG);
         } 
         else {
-            checkEqual(seekString, result, STATUS_CODE::SUCCESS);
+            checkEqual(seekString, result, SUCCESS);
             checkEqual("File pointer after seek", testSystem.getFilePointer(), expected);
         }
         std::cout << "Time Taken: " << timeTaken << " Nanoseconds\n" << std::endl;

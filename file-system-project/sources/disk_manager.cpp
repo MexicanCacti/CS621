@@ -1,7 +1,6 @@
 #include "../headers/disk_manager.hpp"
 #include "../headers/disk_searcher.hpp"
 #include "../headers/disk_writer.hpp"
-#include <iostream>
 
 void DiskManager::initBlocks()
 {
@@ -34,7 +33,6 @@ DiskManager::DiskManager(const int& numBlocks,
     _diskWriter = new DiskWriter(*this);
 }
 
-// NOTE: MAYBE NOT NEEDED
 Block* const DiskManager::getBlock(const unsigned int& blockNumber)
 {
     if(!inBounds(blockNumber)) return nullptr;
@@ -57,11 +55,11 @@ int DiskManager::findFreeEntry(DirectoryBlock* const directory)
 std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type)
 {
     DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
-    if(!rootBlock) return {STATUS_CODE::UNKNOWN_ERROR, 0};
-    if(type != 'U' && type != 'D') return {STATUS_CODE::INVALID_TYPE, 0};
+    if(!rootBlock) return {CASTING_ERROR, 0};
+    if(type != 'U' && type != 'D') return {BAD_TYPE, 0};
 
     unsigned int freeBlockNumber = rootBlock->getFreeBlock();
-    if(freeBlockNumber == 0) return {STATUS_CODE::OUT_OF_MEMORY, 0};
+    if(freeBlockNumber == 0) return {OUT_OF_MEMORY, 0};
 
     Block* freeBlock = _blockMap[freeBlockNumber];
 
@@ -82,7 +80,7 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
     
     --_numFreeBlocks;
     //std::cout << "[DEBUG] allocateBlock returning block=" << freeBlockNumber << " nextFree=" << rootBlock->getFreeBlock() << "\n";
-    return {STATUS_CODE::SUCCESS, freeBlockNumber};
+    return {SUCCESS, freeBlockNumber};
 }
 
 /*
@@ -164,36 +162,37 @@ SearchResult DiskManager::findFile(std::deque<std::string>& nameBuffer)
 
 std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes)
 {
-    if(!inBounds(blockNumber)) return {STATUS_CODE::BAD_COMMAND, ""};
+    if(!inBounds(blockNumber)) return {STATUS_CODE::BOUNDS_ERROR, ""};
 
     UserDataBlock* block = dynamic_cast<UserDataBlock*>(_blockMap[blockNumber]);
-    if(!block) return {STATUS_CODE::UNKNOWN_ERROR, "NOTUSERDATA"};
+    if(!block) return {CASTING_ERROR, "NOTUSERDATA"};
     char* data = block->getUserData();
-    if(!data) return {STATUS_CODE::UNKNOWN_ERROR, "NODATA"};
+    if(!data) return {CASTING_ERROR, "NODATA"};
     std::string readData(data, bytes);
-    return {STATUS_CODE::SUCCESS, readData};
+    return {SUCCESS, readData};
 }
 
 std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes, const int& startByte)
 {
-     if(!inBounds(blockNumber)) return {STATUS_CODE::BAD_COMMAND, ""};
+     if(!inBounds(blockNumber)) return {STATUS_CODE::BOUNDS_ERROR, ""};
 
     UserDataBlock* block = dynamic_cast<UserDataBlock*>(_blockMap[blockNumber]);
-    if(!block) return {STATUS_CODE::UNKNOWN_ERROR, "NOTUSERDATA"};
+    if(!block) return {CASTING_ERROR, "NOTUSERDATA"};
     char* data = block->getUserData();
-    if(!data) return {STATUS_CODE::UNKNOWN_ERROR, "NODATA"};
+    if(!data) return {CASTING_ERROR, "NODATA"};
     if(startByte < 0 || startByte >= _userDataSize) 
-        return {STATUS_CODE::ILLEGAL_ACCESS, ""};
+        return {BOUNDS_ERROR, ""};
 
     unsigned int readableBytes = std::min(bytes, _userDataSize - startByte);
     std::string readData(data + startByte, readableBytes);
-    return {STATUS_CODE::SUCCESS, readData};
+    return {SUCCESS, readData};
 }
 
 // Write any block to disk
+// Actually, use this for loading!
 STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 {
-    return STATUS_CODE::SUCCESS;
+    return SUCCESS;
 }
 
 // Add/update entry
@@ -202,7 +201,7 @@ WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& e
     // NOTE: Need a way to reverse the free if allocation fails!
     freeBlock(directory->getDir()[entryIndex].LINK);
     auto [status, allocatedBlock] = allocateBlock(type);
-    if(status != STATUS_CODE::SUCCESS) return {status, nullptr, type};
+    if(status != SUCCESS) return {status, nullptr, type};
     return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock);
 }
 

@@ -172,11 +172,11 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READ(const unsigned int& 
 std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
 {
     std::cout << "----------------------------In TestSystemManager READALL-----------------------\n";
-    if(_fileMode != 'U') return {STATUS_CODE::BAD_FILE_MODE, "BADFILEMODE"};
-    if(!_lastOpened) return {STATUS_CODE::NO_FILE_OPEN, "NOFILEOPEN"};
+    if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
+    if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
     std::string readData = "";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(_lastOpened->LINK));
-    if(!dataBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NOLINKTODATABLOCK"};
+    if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
     std::cout << "Number of blocks in file: " << _diskManager.countNumBlocks(_lastOpened->LINK) << std::endl;
 
     unsigned int readBlock = _lastOpened->LINK;
@@ -185,7 +185,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
         std::cout << "[READING FROM BLOCK]: " << readBlock << std::endl;
         unsigned int bytesInBlock = dataBlock->getUserDataSize();
         auto [status, readBuffer] = _diskManager.DREAD(readBlock, bytesInBlock, 0);
-        if(status != STATUS_CODE::SUCCESS) return {status, readBuffer};
+        if(status != SUCCESS) return {status, readBuffer};
         std::cout << "Read Buffer: " << readBuffer << std::endl;
         readData.append(readBuffer);
         readBlock = dataBlock->getNextBlock();
@@ -193,5 +193,5 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
     }
 
     std::cout << "----------------------------READALL COMPLETE-----------------------\n\n";
-    return {STATUS_CODE::SUCCESS, readData};
+    return {SUCCESS, readData};
 }
