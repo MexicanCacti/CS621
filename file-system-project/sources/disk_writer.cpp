@@ -1,6 +1,6 @@
 #include "../headers/disk_writer.hpp"
 #include "../headers/disk_manager.hpp"
-
+#include <iostream>
 STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char* data, const int& bytes, const int& startByte, const unsigned int& bufferStart)
 {
     if(!dataBlock || !data || bytes < 0 || startByte < 0) return BAD_ARG;

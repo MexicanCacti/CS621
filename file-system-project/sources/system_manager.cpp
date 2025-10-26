@@ -60,9 +60,13 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
     const int fileLengthWidth = 20;
     const int entryWidth = MAX_NAME_LENGTH + fileLengthWidth;
     const int typeWidth = 6;
+    const int freeBlockWidth = 25;
+    const int dirCountWidth = 25;
+    const int userCountWidth = 25;
     unsigned int numDirs = directoryEntries.size();
     unsigned int freeBlocks = NUM_BLOCKS - numDirs;
     unsigned int numUserBlocks = 0;
+
     std::cout << std::left << "Note: |x| indicates no entries in directory\n";
     std::cout << std::setw(dirWidth) << "Directory" << std::setw(entryWidth) << "Entry" << std::setw(typeWidth) << "Type";
     std::cout << std::setw(fileLengthWidth) << "Length (Bytes)" << std::endl;
@@ -80,6 +84,11 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
             for (unsigned int j = 0; j < entries.size(); ++j)
             {
                 EntryInfo entry = entries[j];
+                if(entry._entryType == 'U')
+                {
+                    numUserBlocks += 1;
+                    freeBlocks -= 1;
+                }
                 std::cout << std::setw(dirWidth) << (j == 0 ? dirName : "");
                 std::cout << std::setw(entryWidth) << entry._entryName;
                 std::cout << std::setw(typeWidth) << entry._entryType;
@@ -88,6 +97,12 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
         }
     }
     std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-') << std::endl;
+    std::cout << std::setw(freeBlockWidth) << "Free Block Count";
+    std::cout << std::setw(dirCountWidth) << "Directory Block Count";
+    std::cout << std::setw(userCountWidth) << "User Data Block Count" << std::endl;
+    std::cout << std::setw(freeBlockWidth) << std::to_string(freeBlocks);
+    std::cout << std::setw(dirCountWidth) << std::to_string(numDirs);
+    std::cout << std::setw(userCountWidth) << std::to_string(numUserBlocks);
 }
 
 
@@ -141,14 +156,19 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
                 if(searchResult.directory->getDir()[searchResult.entryIndex].TYPE != 'D') return ILLEGAL_ACCESS;
             }
         }
-        
+
         int numNeededFreeBlocks = needToCreate.size();
         if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return OUT_OF_MEMORY;
         writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
 
         if(writeResult.status != SUCCESS) return writeResult.status;
-        _lastOpened = writeResult.entry;
-        _fileMode = 'O';
+
+        if(writeResult.entry->TYPE == 'U')
+        {
+            _lastOpened = writeResult.entry;
+            _fileMode = 'O';            
+        }
+
         return writeResult.status;
     }
 
@@ -185,6 +205,9 @@ STATUS_CODE SystemManager::CLOSE()
     return SUCCESS;
 }
 
+/*
+    TODO: IF DELETING PARENT DIRECTORY OF FILE THAT IS OPEN, CLOSE THE FILE
+*/
 STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
 {
     std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
@@ -195,14 +218,44 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
 
     if(!parentDir) return NO_FILE_FOUND;
     Entry* toDelete = &parentDir->getDir()[entryIndex];
+    // Search to see if open file is descendent of directory being deleted
+    if(toDelete->TYPE == 'D' && _lastOpened)
+    {
+        std::queue<unsigned int> dirQueue;
+        dirQueue.push(toDelete->LINK);
+        while(!dirQueue.empty())
+        {
+            unsigned int dirBlockNum = dirQueue.front();
+            dirQueue.pop();
+            DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlockNum));
+            if(!dirBlock) return CASTING_ERROR;
+            for(dirBlock;
+                dirBlock != nullptr;
+                dirBlock = (dirBlock->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlock->getNextBlock())) : nullptr)
+            {
+                auto dir = dirBlock->getDir();
+                for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+                    Entry& e = dir[i];
+                    if(e.TYPE == 'D')
+                    {
+                        dirQueue.push(e.LINK);
+                    }
+                    else if(e.TYPE == 'U')
+                    {
+                        if(_lastOpened && _lastOpened->NAME == e.NAME)
+                        {
+                            _lastOpened = nullptr;
+                            _fileMode = 'I';
+                            _filePointer = 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+    }
     _diskManager.freeBlock(toDelete->LINK);
     toDelete->TYPE = 'F';
-    if(_lastOpened->NAME == toDelete->NAME) 
-    {
-        _lastOpened = nullptr;
-        _fileMode = 'I';
-        _filePointer = 0;
-    }
     return SUCCESS;
 }
 
@@ -371,35 +424,29 @@ STATUS_CODE SystemManager::displayFileSystem()
         dirOrder.pop();
         dirNames.pop();
         directoryNames[index] = dirName;
-        std::vector<EntryInfo>& entryList = directoryEntries[index];
+        std::vector<EntryInfo>& entryList = directoryEntries[index++];
         DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(blockNum));
         if(!dirBlock)
         {
             std::cout << "[ERROR]: COULD NOT GET DIRECTORY BLOCK " << blockNum << std::endl;
-            return CASTING_ERROR;
+            continue;
         }
 
-        for(dirBlock; 
-            dirBlock != nullptr; 
-            dirBlock = (dirBlock->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlock->getNextBlock())) : nullptr)
-        {
-            auto dir = dirBlock->getDir();
-            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
-                Entry& e = dir[i];
-                if(e.TYPE == 'D')
-                {
-                    entryList.push_back({e.NAME, e.TYPE});
-                }
-                else if(e.TYPE == 'U')
-                {
-                    unsigned int prevBlocksBytesAllocated = (_diskManager.countNumBlocks(e.LINK) - 1 ) * USER_DATA_SIZE;
-                    unsigned int lastBlockSize = e.SIZE;
-                    entryList.push_back({e.NAME, e.TYPE, prevBlocksBytesAllocated + lastBlockSize});
-                }
-                
+        auto dir = dirBlock->getDir();
+        for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+            Entry& e = dir[i];
+            if(e.TYPE == 'D')
+            {
+                entryList.push_back({e.NAME, e.TYPE});
             }
+            else if(e.TYPE == 'U')
+            {
+                unsigned int prevBlocksBytesAllocated = (_diskManager.countNumBlocks(e.LINK) - 1 ) * USER_DATA_SIZE;
+                unsigned int lastBlockSize = e.SIZE;
+                entryList.push_back({e.NAME, e.TYPE, prevBlocksBytesAllocated + lastBlockSize});
+            }
+            
         }
-        index++;
     }
     outputFileSystem(directoryNames, directoryEntries);
     return STATUS_CODE::SUCCESS;

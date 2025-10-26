@@ -77,7 +77,7 @@ void FrontEnd::printCommandList()
     const int commandWidth = 10;
     const int argWidth = 15;
     const int noteWidth = 20;
-    std::cout << std::left << "\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
+    std::cout << std::left << "\n\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
     std::cout << std::setw(commandWidth) << "Command";
     std::cout << std::setw(argWidth) << "Arg Order";
     std::cout << std::setw(noteWidth) << "Special Notes";
@@ -192,6 +192,7 @@ NOTE: WRITE NEEDS WAY TO SIGNAL IF DISK CANT WRITE ALL BYTES OF DATA
 STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
 {
     std::pair<STATUS_CODE, std::string> readResult;
+    STATUS_CODE writeStatus;
     switch (hashCommand(processedInput._command))
     {
         case CommandCode::CREATE:
@@ -210,7 +211,12 @@ STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
             }
             return readResult.first;
         case CommandCode::WRITE:
-            return _systemManager.WRITE(processedInput._intArg1, processedInput._stringArg);
+            writeStatus = _systemManager.WRITE(processedInput._intArg1, processedInput._stringArg);
+            if(writeStatus == OUT_OF_MEMORY)
+            {
+                std::cout << "[WARNING]: NOT ALL BYTES COULD BE WRITTEN DUE TO INSUFFICIENT DISK SPACE!" << std::endl;
+            }
+            return writeStatus;
         case CommandCode::SEEK:
             return _systemManager.SEEK(processedInput._intArg1, processedInput._intArg2);
         case CommandCode::DISPLAY:
@@ -244,7 +250,6 @@ void FrontEnd::startInput()
         status = runInput(processedInput);
         if(status != SUCCESS)
         {
-            std::cout << "Error running command!\n";
             std::cout << "[ERROR CODE]: " << statusToString(status) << std::endl;
             continue;
         }
