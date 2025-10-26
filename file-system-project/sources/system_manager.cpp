@@ -200,7 +200,6 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
     return SUCCESS;
 }
 
-// NOTE: FIX ME!
 std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numBytes)
 {
     if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
@@ -209,18 +208,11 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
     std::string readData = "";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
-    // 1 2 3 | 4 5 6 | 7 8 9
-    //   p             x
-    // Total : 9
-    // Last Block: 1
 
     unsigned int readBytes = numBytes;
     unsigned int pointerBlock = _filePointer / USER_DATA_SIZE + 1;
     unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;
     unsigned int readBlock = _lastOpened->LINK;
-    unsigned int blocksAllocated = _diskManager.countNumBlocks(_lastOpened->LINK);
-    unsigned int bytesUpToPointer = pointerBlock * USER_DATA_SIZE + pointerOffset;
-    unsigned int totalBytesAllocated = blocksAllocated * USER_DATA_SIZE;
 
     for(int i = 0 ; i < pointerBlock - 1; ++i)
     {
@@ -231,6 +223,7 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         dataBlock = dynamic_cast<UserDataBlock*>(nextBlock);
     }
     unsigned int readStart = pointerOffset;
+
     std::pair<STATUS_CODE, std::string> readBuffer;
     while(dataBlock && readBytes > 0)
     {
@@ -241,11 +234,13 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         readData.append(readBuffer.second);
         readBytes -= bytesToRead;
         readBlock = dataBlock->getNextBlock();
-        if(readBytes <= 0 || readBlock == 0) break;
+        if(readBytes <= 0 || readBlock == 0) {
+            readData.append("\nEnd of File Reached");
+            break;
+        }
         (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(readBlock));
         readStart = 0;
     }
-    if(totalBytesAllocated -  _lastOpened->SIZE - bytesUpToPointer <= 0) readData.append("\nEnd of File Reached");
     return {readBuffer.first, readData};
 }
 
@@ -281,7 +276,6 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
     unsigned int freeBytes = totalBytesAllocated - bytesUpToPointer;
     unsigned int bytesToWrite = numBytes;
     unsigned int bufferStart = 0;
-
     if(bytesToWrite <= freeBytes)
     {
         while(currentBlock && bytesToWrite > 0)

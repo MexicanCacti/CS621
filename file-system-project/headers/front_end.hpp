@@ -6,7 +6,7 @@
 #include <string>
 #include <iomanip>
 #include <vector>
-
+#include <cctype>
 
 class FrontEnd {
     private:

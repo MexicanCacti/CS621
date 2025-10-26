@@ -9,7 +9,7 @@ struct InputResult{
     char _charArg;
     STATUS_CODE _status;
     std::string _errorMessage;
-    InputResult();
+    InputResult() = default;
     InputResult(STATUS_CODE status, std::string em) : 
         _status(status), _errorMessage(em) {};
     InputResult(std::string c, std::string sa, int ia1, int ia2, char ca, STATUS_CODE st, std::string em) :

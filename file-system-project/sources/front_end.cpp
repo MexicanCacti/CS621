@@ -49,8 +49,16 @@ bool FrontEnd::getCharToken(std::deque<std::string>& tokens, char& ch)
 bool FrontEnd::getIntToken(std::deque<std::string>& tokens, int& i)
 {
     if(tokens.empty()) return false;
-    i = std::stoi(tokens.front());
-    tokens.pop_front();
+    try
+    {
+        i = std::stoi(tokens.front());
+        tokens.pop_front();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << ": Error converting integer to string\n";
+        return false;
+    }
     return true;
 }
 
@@ -69,7 +77,7 @@ void FrontEnd::printCommandList()
     const int commandWidth = 10;
     const int argWidth = 15;
     const int noteWidth = 20;
-    std::cout << std::left << "\nInput command as one string in the following formats" << std::endl;
+    std::cout << std::left << "\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
     std::cout << std::setw(commandWidth) << "Command";
     std::cout << std::setw(argWidth) << "Arg Order";
     std::cout << std::setw(noteWidth) << "Special Notes";
@@ -178,6 +186,9 @@ InputResult FrontEnd::processInput(std::string& input)
     return processedInput;
 }
 
+/*
+NOTE: WRITE NEEDS WAY TO SIGNAL IF DISK CANT WRITE ALL BYTES OF DATA
+*/
 STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
 {
     std::pair<STATUS_CODE, std::string> readResult;

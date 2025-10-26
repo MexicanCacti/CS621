@@ -75,6 +75,7 @@ int main() {
     // {type, name, expectedBlock, expectedStatus}
     // TODO: 
     // Add test to check that won't create chain if not enough room for chain + directory
+    // UPDATE: READS WILL NOW OUTPUT MESSAGE WHEN EOF IS REACHED
     testSystem.CREATE('U', "file1");
     testSystem.CREATE('U', "dir1/file2");
 
