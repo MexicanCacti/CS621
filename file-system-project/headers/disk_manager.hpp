@@ -33,7 +33,6 @@ class DiskManager{
         DiskManager(const int& numBlocks, 
             const int& blockSize, 
             const int& userDataSize);
-        Block* const getBlock(const unsigned int& blockNumber);
         int const getBlockCount() { return _numBlocks;}
         int const getBlockSize() { return _blockSize;}
         std::pair<STATUS_CODE, unsigned int> allocateBlock(const char& type);
@@ -43,6 +42,7 @@ class DiskManager{
         unsigned int const getNextFreeBlock() {return dynamic_cast<DirectoryBlock*>(_blockMap[0])->getFreeBlock();}
         unsigned int const getNumFreeBlocks() {return _numFreeBlocks;}
         void const setNextFreeBlock(const unsigned int& blockNum) {dynamic_cast<DirectoryBlock*>(_blockMap[0])->setFreeBlock(blockNum);}
+        Block* DREAD(const unsigned int& blockNumber);
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes, const int& startByte);
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);
         STATUS_CODE DWRITE(unsigned int blockNum, Block* blockPtr);        // Write any block to disk

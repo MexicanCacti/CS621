@@ -1,5 +1,5 @@
 #pragma once
-
+#include <string>
 enum STATUS_CODE{
     SUCCESS,
     NO_FILE_OPEN,
@@ -12,4 +12,21 @@ enum STATUS_CODE{
     BOUNDS_ERROR,
     ILLEGAL_ACCESS,
     OUT_OF_MEMORY
+};
+
+inline std::string statusToString(STATUS_CODE code) {
+    switch (code) {
+        case STATUS_CODE::SUCCESS:          return "SUCCESS";
+        case STATUS_CODE::NO_FILE_OPEN:     return "NO_FILE_OPEN";
+        case STATUS_CODE::NO_FILE_FOUND:    return "NO_FILE_FOUND";
+        case STATUS_CODE::BAD_FILE_MODE:    return "BAD_FILE_MODE";
+        case STATUS_CODE::BAD_TYPE:         return "BAD_TYPE";
+        case STATUS_CODE::BAD_ARG:          return "BAD_ARG";
+        case STATUS_CODE::BAD_NAME_LENGTH:  return "BAD_NAME_LENGTH";
+        case STATUS_CODE::CASTING_ERROR:    return "CASTING_ERROR";
+        case STATUS_CODE::BOUNDS_ERROR:     return "BOUNDS_ERROR";
+        case STATUS_CODE::ILLEGAL_ACCESS:   return "ILLEGAL_ACCESS";
+        case STATUS_CODE::OUT_OF_MEMORY:    return "OUT_OF_MEMORY";   
+        default:                          return "UNKNOWN_STATUS_CODE";
+    }
 };

@@ -10,7 +10,7 @@ SearchResult TestSystemManager::findCreatedFile(const std::string& filePath)
 
 unsigned int TestSystemManager::getNextFreeBlock()
 {
-    return dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(0))->getFreeBlock();
+    return dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(0))->getFreeBlock();
 }
 
 // Uncomment below to enable debug WRITE & READ
@@ -26,14 +26,14 @@ STATUS_CODE TestSystemManager::WRITE(const int& numBytes, const std::string& wri
     
     unsigned int writeBlock = _lastOpened->LINK;
     unsigned int writeStart = pointerOffset;
-    UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
+    UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(writeBlock));
     if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
 
     for(unsigned int i = 0 ; i < pointerBlock; ++i)
     {
         writeBlock = currentBlock->getNextBlock();
         if(writeBlock == 0) return STATUS_CODE::ILLEGAL_ACCESS;
-        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(writeBlock));
+        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(writeBlock));
         if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
     }
 
@@ -69,7 +69,7 @@ STATUS_CODE TestSystemManager::WRITE(const int& numBytes, const std::string& wri
                 _lastOpened->SIZE = std::max(_lastOpened->SIZE, writeAmount);
                 break;
             }
-            currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(currentBlock->getNextBlock()));
+            currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(currentBlock->getNextBlock()));
             writeStart = 0;
         }
         return STATUS_CODE::SUCCESS;
@@ -101,7 +101,7 @@ STATUS_CODE TestSystemManager::WRITE(const int& numBytes, const std::string& wri
         auto [allocStatus, newBlock] = _diskManager.allocateBlock('U');
         if(allocStatus != STATUS_CODE::SUCCESS) return allocStatus;
         currentBlock->setNextBlock(newBlock);
-        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(newBlock));
+        currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(newBlock));
         if(!currentBlock) return STATUS_CODE::UNKNOWN_ERROR;
         currentBlock->setPrevBlock(writeBlock);
         writeBlock = newBlock;
@@ -125,7 +125,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READ(const unsigned int& 
     if(!_lastOpened) return {STATUS_CODE::NO_FILE_OPEN, "NOFILEOPEN"};
 
     std::string readData = "";
-    UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(_lastOpened->LINK));
+    UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NOLINKTODATABLOCK"};
 
     unsigned int readBytes = numBytes;
@@ -141,7 +141,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READ(const unsigned int& 
     {
         readBlock = dataBlock->getNextBlock();
         if(readBlock == 0) return {STATUS_CODE::ILLEGAL_ACCESS, "POINTEROUTOFBOUNDS"};
-        Block* nextBlock = _diskManager.getBlock(dataBlock->getNextBlock());
+        Block* nextBlock = _diskManager.DREAD(dataBlock->getNextBlock());
         if(!nextBlock) return {STATUS_CODE::ILLEGAL_ACCESS, "NEXTDATABLOCKNULL"};
         dataBlock = dynamic_cast<UserDataBlock*>(nextBlock);
     }
@@ -161,7 +161,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READ(const unsigned int& 
         readBlock = dataBlock->getNextBlock();
         std::cout << "[BYTES READ]: " << bytesToRead << "\t[BYTES REMAINING]: " << readBytes << std::endl;
         if(readBytes <= 0 || readBlock == 0) break;
-        (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(readBlock));
+        (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(readBlock));
         readStart = 0;
     }
     std::cout << "----------------------------READ COMPLETE-----------------------\n\n";
@@ -175,7 +175,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
     if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
     std::string readData = "";
-    UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(_lastOpened->LINK));
+    UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
     std::cout << "Number of blocks in file: " << _diskManager.countNumBlocks(_lastOpened->LINK) << std::endl;
 
@@ -189,7 +189,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
         std::cout << "Read Buffer: " << readBuffer << std::endl;
         readData.append(readBuffer);
         readBlock = dataBlock->getNextBlock();
-        (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.getBlock(readBlock));
+        (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(readBlock));
     }
 
     std::cout << "----------------------------READALL COMPLETE-----------------------\n\n";

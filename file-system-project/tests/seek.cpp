@@ -4,7 +4,6 @@
 #include <cassert>
 #include <vector>
 #include <chrono>
-#include <../utils/status_codes_strings.hpp>
 
 unsigned int testsPassed = 0;
 unsigned int testsFailed = 0;
@@ -40,7 +39,7 @@ void printSummary() {
 
 int main() {
     DiskManager diskManager(NUM_BLOCKS, BLOCK_SIZE, USER_DATA_SIZE);
-    TestSystemManager testSystem(diskManager, "testRoot");
+    TestSystemManager testSystem(diskManager);
     Entry testFile;
     char testName[10] = {'t','e','s','t'};
     testFile.LINK = 1;

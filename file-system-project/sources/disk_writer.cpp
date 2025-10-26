@@ -31,7 +31,7 @@ std::pair<STATUS_CODE, DirectoryBlock*> const DiskWriter::chainDirectoryBlock(Di
 
     directory->setNextBlock(freeBlock);
 
-    DirectoryBlock* newChain = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(freeBlock));
+    DirectoryBlock* newChain = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(freeBlock));
     if(!newChain){
         _diskManager.freeBlock(freeBlock);
         directory->setNextBlock(0);
@@ -62,7 +62,7 @@ WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const director
 */
 WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
 {
-    DirectoryBlock* directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(0));
+    DirectoryBlock* directory = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(0));
     // Find last valid directory
     if(!existingPath.empty())
     {
@@ -70,7 +70,7 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
         if(findStartPoint.statusCode != SUCCESS) return {findStartPoint.statusCode, nullptr, type};
         Entry startPoint = findStartPoint.directory->getDir()[findStartPoint.entryIndex];
         if(startPoint.TYPE != 'D') return {BAD_TYPE, nullptr, type};
-        directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(startPoint.LINK));
+        directory = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(startPoint.LINK));
     }
 
     if(!directory) return {CASTING_ERROR, nullptr, type};
@@ -90,7 +90,7 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
         auto [status, freeBlock] = _diskManager.allocateBlock('D');
         if(status != SUCCESS) return {status, nullptr, type};
         addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock);
-        directory = dynamic_cast<DirectoryBlock*>(_diskManager.getBlock(freeBlock));
+        directory = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(freeBlock));
         nameBufferQueue.pop_front();
         nextFreeEntry = directory->findFreeEntry();
     }

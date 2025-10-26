@@ -9,15 +9,14 @@ class SystemManager{
     protected:
         DiskManager& _diskManager;
         Entry* _lastOpened = nullptr;
-        char _fileMode = 'I';
+        char _fileMode = 'I';    
         unsigned int _filePointer = 0;
-
-        std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
+        static std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
         DirectoryResults getDirectories();
         void outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<entryPair>>& directoryEntries);
         SystemManager() = delete;
     public:
-        SystemManager(DiskManager& diskManager, const std::string& rootName);
+        SystemManager(DiskManager& diskManager);
         STATUS_CODE CREATE(const char& type, const std::string& nameBuffer);
         STATUS_CODE OPEN(const char& mode, const std::string& nameBuffer);
         STATUS_CODE CLOSE();
@@ -25,5 +24,9 @@ class SystemManager{
         std::pair<STATUS_CODE, std::string> READ(const unsigned int& numBytes);
         STATUS_CODE WRITE(const int& numBytes, const std::string& writeBuffer);
         STATUS_CODE SEEK(const int& base, const int& offset);
-        void displayFileSystem();
+        STATUS_CODE displayFileSystem();
+        bool hasOpenFile() {return _lastOpened != nullptr;}
+        char* getFileName();
+        char getFileMode() {return _fileMode;}
+        unsigned int getFilePointer() {return _filePointer;}
 };

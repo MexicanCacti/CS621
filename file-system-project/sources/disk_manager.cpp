@@ -33,13 +33,6 @@ DiskManager::DiskManager(const int& numBlocks,
     _diskWriter = new DiskWriter(*this);
 }
 
-Block* const DiskManager::getBlock(const unsigned int& blockNumber)
-{
-    if(!inBounds(blockNumber)) return nullptr;
-
-    return _blockMap[blockNumber];
-}
-
 int DiskManager::findFreeEntry(DirectoryBlock* const directory)
 {
     Entry* entries = directory->getDir();
@@ -132,11 +125,11 @@ unsigned int DiskManager::countNumBlocks(const unsigned int& blockNumber)
     if(!inBounds(blockNumber)) return 0;
     unsigned int count = 1;
     unsigned int lastBlockNumber = blockNumber;
-    Block* currentBlock = getBlock(lastBlockNumber);
+    Block* currentBlock = DREAD(lastBlockNumber);
     
     while(currentBlock->getNextBlock() != 0){
         lastBlockNumber = currentBlock->getNextBlock();
-        currentBlock = getBlock(lastBlockNumber);
+        currentBlock = DREAD(lastBlockNumber);
         ++count;
     }
     return count;
@@ -146,11 +139,11 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
 {
     if(!inBounds(blockNumber)) return 0;
     unsigned int lastBlockNumber = blockNumber;
-    Block* currentBlock = getBlock(lastBlockNumber);
+    Block* currentBlock = DREAD(lastBlockNumber);
     
     while(currentBlock->getNextBlock() != 0){
         lastBlockNumber = currentBlock->getNextBlock();
-        currentBlock = getBlock(lastBlockNumber);
+        currentBlock = DREAD(lastBlockNumber);
     }
     return lastBlockNumber;
 }
@@ -158,6 +151,13 @@ unsigned int const DiskManager::getLastBlock(const unsigned int& blockNumber)
 SearchResult DiskManager::findFile(std::deque<std::string>& nameBuffer) 
 {
     return _diskSearcher->findFile(nameBuffer);
+}
+
+Block* DiskManager::DREAD(const unsigned int& blockNumber)
+{
+    if(!inBounds(blockNumber)) return nullptr;
+
+    return _blockMap[blockNumber];
 }
 
 std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes)

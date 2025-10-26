@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <chrono>
-#include "../utils/status_codes_strings.hpp"
 
 unsigned int testsPassed = 0;
 unsigned int testsFailed = 0;
@@ -65,7 +64,7 @@ const int testBlocks = 35;
 
 int main() {
     DiskManager diskManager(testBlocks, BLOCK_SIZE, USER_DATA_SIZE);
-    TestSystemManager testSystem(diskManager, "testRoot");
+    TestSystemManager testSystem(diskManager);
     
     struct createType {
         char type;

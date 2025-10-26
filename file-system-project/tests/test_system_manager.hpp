@@ -6,7 +6,7 @@ class TestSystemManager : public SystemManager {
     private:
         DirectoryBlock* _rootBlock;
     public:
-        TestSystemManager(DiskManager& diskManager, const std::string& rootName) : SystemManager(diskManager, rootName) {};
+        TestSystemManager(DiskManager& diskManager) : SystemManager(diskManager) {};
         void setEntry(Entry* entry) {
             STATUS_CODE code = _diskManager.allocateBlock('U').first;
             if(code == STATUS_CODE::SUCCESS) _lastOpened = entry;
