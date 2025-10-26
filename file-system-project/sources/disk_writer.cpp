@@ -1,10 +1,12 @@
 #include "../headers/disk_writer.hpp"
 #include "../headers/disk_manager.hpp"
+
 STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char* data, const int& bytes, const int& startByte, const unsigned int& bufferStart)
 {
     if(!dataBlock || !data) return BAD_ARG;
     if(startByte >= _diskManager.getBlockSize()) return BOUNDS_ERROR;
     char* userData = dataBlock->getUserData();
+    unsigned int dataLength = dataBlock->getUserDataSize();
     char tempData [USER_DATA_SIZE + 1];
 
     for(int i = 0 ; i < startByte; ++i)
@@ -17,7 +19,9 @@ STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char*
         tempData[i + startByte] = data[i + bufferStart];
     }
 
-    tempData[USER_DATA_SIZE] = '\0';
+    int lastByteIndex = startByte + bytes;
+    if(lastByteIndex > USER_DATA_SIZE) lastByteIndex = USER_DATA_SIZE;
+    tempData[lastByteIndex] = '\0';
 
     dataBlock->setUserData(tempData);
 

@@ -54,20 +54,23 @@ DirectoryResults SystemManager::getDirectories()
     return {dirOrder, dirNames, SUCCESS};
 }
 
-void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<entryPair>>& directoryEntries)
+void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<EntryInfo>>& directoryEntries)
 {
     const int dirWidth = MAX_NAME_LENGTH + 2;
-    const int entryWidth = MAX_NAME_LENGTH + 2;
-    const int typeWidth = 4;
-    std::cout << std::left << "Note: |x| indicates no entries in directory\n";
-    std::cout << std::setw(dirWidth) << "Directory" << std::setw(entryWidth) << "Entry" << std::setw(typeWidth) << "Type" << std::endl;
-    std::cout << std::string(dirWidth + entryWidth + typeWidth, '-') << std::endl;
+    const int fileLengthWidth = 20;
+    const int entryWidth = MAX_NAME_LENGTH + fileLengthWidth;
+    const int typeWidth = 6;
     unsigned int numDirs = directoryEntries.size();
+    unsigned int freeBlocks = NUM_BLOCKS - numDirs;
+    unsigned int numUserBlocks = 0;
+    std::cout << std::left << "Note: |x| indicates no entries in directory\n";
+    std::cout << std::setw(dirWidth) << "Directory" << std::setw(entryWidth) << "Entry" << std::setw(typeWidth) << "Type";
+    std::cout << std::setw(fileLengthWidth) << "Length (Bytes)" << std::endl;
+    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-') << std::endl;
     for (unsigned int i = 0; i < numDirs; ++i)
     {
         std::string& dirName = dirNames[i];
-        std::vector<entryPair>& entries = directoryEntries[i];
-
+        std::vector<EntryInfo>& entries = directoryEntries[i];
         if (entries.empty())
         {
             std::cout << std::setw(dirWidth) << dirName << std::setw(entryWidth) << "|x|" << std::setw(typeWidth) << "|x|" << std::endl;
@@ -76,12 +79,15 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
         {
             for (unsigned int j = 0; j < entries.size(); ++j)
             {
-                if (j == 0) std::cout << std::setw(dirWidth) << dirName << std::setw(entryWidth) << entries[j].first << std::setw(typeWidth) << entries[j].second << std::endl;
-                else std::cout << std::setw(dirWidth) << "" << std::setw(entryWidth) << entries[j].first << std::setw(typeWidth) << entries[j].second << std::endl;
+                EntryInfo entry = entries[j];
+                std::cout << std::setw(dirWidth) << (j == 0 ? dirName : "");
+                std::cout << std::setw(entryWidth) << entry._entryName;
+                std::cout << std::setw(typeWidth) << entry._entryType;
+                std::cout << std::setw(fileLengthWidth) << (entry._entryType == 'U' ? std::to_string(entry._fileLength) : "") << std::endl;
             }
         }
     }
-    std::cout << std::string(dirWidth + entryWidth + typeWidth, '-') << std::endl;
+    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-') << std::endl;
 }
 
 
@@ -233,11 +239,9 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         if(readBuffer.first != SUCCESS) break;
         readData.append(readBuffer.second);
         readBytes -= bytesToRead;
+        if(dataBlock->getNextBlock() == 0 && readStart + bytesToRead >= bytesInBlock) readData.append("\"\nEnd of File Reached");
+        else if(dataBlock->getNextBlock() == 0) readData.append("\"");
         readBlock = dataBlock->getNextBlock();
-        if(readBytes <= 0 || readBlock == 0) {
-            readData.append("\nEnd of File Reached");
-            break;
-        }
         (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(readBlock));
         readStart = 0;
     }
@@ -374,7 +378,7 @@ STATUS_CODE SystemManager::displayFileSystem()
     unsigned int numDirectories = dirOrder.size();
 
     std::vector<std::string> directoryNames(numDirectories);
-    std::vector<std::vector<entryPair>> directoryEntries(numDirectories);
+    std::vector<std::vector<EntryInfo>> directoryEntries(numDirectories);
 
     unsigned int index = 0;
     while(!dirOrder.empty())
@@ -384,7 +388,7 @@ STATUS_CODE SystemManager::displayFileSystem()
         dirOrder.pop();
         dirNames.pop();
         directoryNames[index] = dirName;
-        std::vector<entryPair>& entryList = directoryEntries[index];
+        std::vector<EntryInfo>& entryList = directoryEntries[index];
         DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(blockNum));
         if(!dirBlock)
         {
@@ -399,10 +403,17 @@ STATUS_CODE SystemManager::displayFileSystem()
             auto dir = dirBlock->getDir();
             for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
                 Entry& e = dir[i];
-                if(e.TYPE != 'F')
+                if(e.TYPE == 'D')
                 {
                     entryList.push_back({e.NAME, e.TYPE});
                 }
+                else if(e.TYPE == 'U')
+                {
+                    unsigned int totalBytesAllocated = _diskManager.countNumBlocks(e.LINK) * USER_DATA_SIZE;
+                    unsigned int lastBlockSize = e.SIZE;
+                    entryList.push_back({e.NAME, e.TYPE, totalBytesAllocated - (USER_DATA_SIZE - lastBlockSize)});
+                }
+                
             }
         }
         index++;

@@ -206,7 +206,7 @@ STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
             readResult = _systemManager.READ(processedInput._intArg1);
             if(readResult.first == SUCCESS)
             {
-                std::cout << "[READ]: " << readResult.second << std::endl;
+                std::cout << "[READ]: \"" << readResult.second << std::endl;
             }
             return readResult.first;
         case CommandCode::WRITE:

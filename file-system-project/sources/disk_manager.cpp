@@ -168,7 +168,9 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
     if(!block) return {CASTING_ERROR, "NOTUSERDATA"};
     char* data = block->getUserData();
     if(!data) return {CASTING_ERROR, "NODATA"};
-    std::string readData(data, bytes);
+    unsigned int readBytes = bytes;
+    if(block->getUserDataSize() < bytes) readBytes = block->getUserDataSize();
+    std::string readData(data, readBytes);
     return {SUCCESS, readData};
 }
 
@@ -180,10 +182,10 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
     if(!block) return {CASTING_ERROR, "NOTUSERDATA"};
     char* data = block->getUserData();
     if(!data) return {CASTING_ERROR, "NODATA"};
-    if(startByte < 0 || startByte >= _userDataSize) 
-        return {BOUNDS_ERROR, ""};
-
-    unsigned int readableBytes = std::min(bytes, _userDataSize - startByte);
+    unsigned int dataLength = block->getUserDataSize();
+    if(startByte < 0 || startByte > dataLength) return {BOUNDS_ERROR, ""};
+    unsigned int readableBytes = bytes;
+    if(dataLength - startByte < readableBytes) readableBytes = dataLength - startByte;
     std::string readData(data + startByte, readableBytes);
     return {SUCCESS, readData};
 }
