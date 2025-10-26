@@ -253,7 +253,6 @@ void FrontEnd::startInput()
 
 int main()
 {
-    std::string root = "root";
     DiskManager diskManager(NUM_BLOCKS, BLOCK_SIZE, USER_DATA_SIZE);
     SystemManager systemManager(diskManager);
     FrontEnd frontEnd(systemManager);

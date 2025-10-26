@@ -12,7 +12,7 @@ void DiskManager::initBlocks()
         _blockMap[i] = new Block(i - 1, i + 1);
     }
 
-    _blockMap[_numBlocks] = new Block(_numBlocks - 1, 0);
+    _blockMap[_numBlocks - 1] = new Block(_numBlocks - 1, 0);
     _numFreeBlocks = _numBlocks - 1;
     DirectoryBlock* root = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
     root->setFreeBlock(1);

@@ -3,6 +3,7 @@
 #include "../utils/search_result.hpp"
 #include "../utils/write_result.hpp"
 #include "../headers/user_data_block.hpp"
+#include <cmath>
 
 class DiskManager;
 

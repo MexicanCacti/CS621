@@ -3,23 +3,27 @@
 
 STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char* data, const int& bytes, const int& startByte, const unsigned int& bufferStart)
 {
-    if(!dataBlock || !data) return BAD_ARG;
+    if(!dataBlock || !data || bytes < 0 || startByte < 0) return BAD_ARG;
+    
     if(startByte >= _diskManager.getBlockSize()) return BOUNDS_ERROR;
+
     char* userData = dataBlock->getUserData();
     unsigned int dataLength = dataBlock->getUserDataSize();
-    char tempData [USER_DATA_SIZE + 1];
+    char tempData [USER_DATA_SIZE + 1] = {0};
 
-    for(int i = 0 ; i < startByte; ++i)
+    unsigned int prevBytes = std::min<unsigned int>(startByte, dataLength);
+    for(int i = 0 ; i < prevBytes ; ++i)
     {
         tempData[i] = userData[i];
     }
 
-    for(int i = 0 ; i < bytes; ++i)
+    unsigned int writeBytes = std::min<unsigned int>(bytes, USER_DATA_SIZE - startByte);
+    for(int i = 0 ; i < writeBytes; ++i)
     {
         tempData[i + startByte] = data[i + bufferStart];
     }
 
-    int lastByteIndex = startByte + bytes;
+    int lastByteIndex = startByte + writeBytes;
     if(lastByteIndex > USER_DATA_SIZE) lastByteIndex = USER_DATA_SIZE;
     tempData[lastByteIndex] = '\0';
 
