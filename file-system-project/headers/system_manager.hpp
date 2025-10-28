@@ -6,6 +6,8 @@
 #include <deque>
 #include <algorithm>
 #include <fstream>
+#include <filesystem> 
+namespace fs = std::filesystem;
 
 class SystemManager{
     protected:
@@ -28,6 +30,7 @@ class SystemManager{
         STATUS_CODE SEEK(const int& base, const int& offset);
         STATUS_CODE displayFileSystem();
         void SAVE(const std::string& fileName);
+        STATUS_CODE LOAD(const std::string& fileName);
         bool hasOpenFile() {return _lastOpened != nullptr;}
         char* getFileName();
         char getFileMode() {return _fileMode;}

@@ -20,5 +20,5 @@ class DiskWriter{
         WriteResult const addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum);
         WriteResult const createToFile(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type);
         void saveFileSystem(std::ofstream& out);
-        void loadFileSystem(std::ifstream& in);
+        STATUS_CODE loadFileSystem(std::ifstream& in);
 };

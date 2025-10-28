@@ -54,7 +54,7 @@ WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const director
 {
     if(entryIndex > MAX_DIRECTORY_ENTRIES) return {BAD_ARG, nullptr, type};
     
-    directory->getDir()[entryIndex] = {name, type, blockNum, 0};
+    directory->getDir()[entryIndex] = Entry(name, type, blockNum, 0);
 
     return {SUCCESS, &directory->getDir()[entryIndex], type};
 }
@@ -170,15 +170,32 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
 
     for(unsigned int i = 0 ; i < NUM_BLOCKS; ++i)
     {
+        // Debug: report how many entries we will write for this block
+        std::cout << "[DSAVE] block " << i << " has " << blockEntries[i].size() << " entries\n";
+        std::cout.flush();
+
         out << i << "\n";
+
         for(SaveType& saveOutput : blockEntries[i])
         {
+            // Debug: print a short description of the entry being written
+            std::cout << "[DSAVE]   writing entry type=" << saveOutput._TYPE
+                    << " block=" << saveOutput._blockNumber
+                    << " name=" << saveOutput._NAME
+                    << " dataSize=" << saveOutput._dataSize << "\n";
+            std::cout.flush();
+
             saveOutput.save(1, out);
+
+            // flush the file periodically to ensure bytes hit disk
+            out.flush();
         }
     }
 }
 
-void DiskWriter::loadFileSystem(std::ifstream& in)
+STATUS_CODE DiskWriter::loadFileSystem(std::ifstream& in)
 {
     
+    
+    return SUCCESS;
 }

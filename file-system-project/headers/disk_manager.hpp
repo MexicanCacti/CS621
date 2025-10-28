@@ -42,7 +42,7 @@ class DiskManager{
         unsigned int const getNextFreeBlock() {return dynamic_cast<DirectoryBlock*>(_blockMap[0])->getFreeBlock();}
         unsigned int const getNumFreeBlocks() {return _numFreeBlocks;}
         void DSAVE(std::ofstream& out);
-        void DLOAD(std::ifstream& in);
+        STATUS_CODE DLOAD(std::ifstream& in);
         Block* DREAD(const unsigned int& blockNumber);
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes, const int& startByte);
         std::pair<STATUS_CODE, std::string> DREAD(const unsigned int& blockNumber, const int& bytes);

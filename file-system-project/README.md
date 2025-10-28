@@ -13,4 +13,6 @@ READ-WRITE:
  g++ ./tests/read-write.cpp ./tests/test_system_manager.hpp ./tests/test_system_manager.cpp ./sources/disk_manager.cpp ./sources/system_manager.cpp ./sources/directory_block.cpp ./sources/disk_searcher.cpp ./sources/disk_writer.cpp -I./headers -I./sources -I./utils -o read-write.exe
 
 Front-End
- g++ ./sources/front_end.cpp ./sources/disk_manager.cpp ./sources/system_manager.cpp ./sources/directory_block.cpp ./sources/disk_searcher.cpp ./sources/disk_writer.cpp -I./headers -I./sources -I./utils -o front-end.exe
+g++ -std=c++20 -g -static-libstdc++ -static-libgcc ./sources/front_end.cpp ./sources/disk_manager.cpp ./sources/system_manager.cpp ./sources/directory_block.cpp ./sources/disk_searcher.cpp ./sources/disk_writer.cpp -I./headers -I./sources -I./utils -o front-end.exe
+
+g++ ./sources/front_end.cpp -std=c++20 -g -static-libstdc++ -static-libgcc ./sources/*.cpp -I./headers -I./sources -I./utils -o front-end.exe

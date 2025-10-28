@@ -12,6 +12,27 @@ bool FrontEnd::containsInvalidChars(std::string& input)
     return false;
 }
 
+std::vector<std::string> FrontEnd::findSaveFiles()
+{
+    std::vector<std::string> fileList;
+    const fs::path currentWorkingDirectory = fs::current_path();
+    std::cout << "Searching in Path: " << currentWorkingDirectory.string() << std::endl;
+    std::error_code error;
+    for(const auto& entry : fs::directory_iterator(currentWorkingDirectory, error))
+    {
+        if(error)
+        {
+            std::cerr << "Error finding save files: " << error.message();
+            break;
+        }
+        fs::path filePath = entry.path();
+        if(!fs::is_regular_file(filePath)) continue;
+
+        if(filePath.extension() == ".txt") fileList.push_back(filePath.string());
+    }
+    return fileList;
+}
+
 std::deque<std::string> FrontEnd::tokenizeInput(std::string& input)
 {
     std::deque<std::string> tokens;
@@ -117,6 +138,57 @@ void FrontEnd::printCommandList()
         std::cout << "\tFile Mode: " << _systemManager.getFileMode() << std::endl;
     }
     
+}
+
+STATUS_CODE FrontEnd::displayLoadList()
+{
+    std::vector<std::string> loadList = findSaveFiles();
+    if(loadList.empty())
+    {
+        std::cout << "\nNo save files found!\n";
+        return NO_FILE_FOUND;
+    }
+    unsigned int numSaveFiles = loadList.size();
+    for(unsigned int i = 0 ; i < numSaveFiles; ++i)
+    {
+        std::cout << "[" << i << "]: " << loadList[i] << std::endl;
+    }
+    std::cout << "[" << numSaveFiles << "]: \tCancel Load" << std::endl;
+
+    std::cout << "Select a number [" << 0 << " - " << numSaveFiles << "] to load:\n";
+    std::string input;
+    unsigned int choice = 0;
+    while(true)
+    {
+        input = promptInput();
+        try{
+            choice = std::stoul(input);
+        }
+        catch(const std::exception& e)
+        {
+            std::cout << "Invalid input, enter a number between [" << 0 << " to " << numSaveFiles << "] to load:\n";
+            continue;
+        }
+        if(choice > numSaveFiles)
+        {
+            std::cout << "Invalid input, enter a number between [" << 0 << " to " << numSaveFiles << "] to load:\n";
+        }
+        else break;
+    }
+    
+    if(choice == numSaveFiles) return SUCCESS;
+    return _systemManager.LOAD(loadList[choice]);
+}
+
+char FrontEnd::getYesNoInput()
+{
+    std::string input = promptInput();
+    while(input.empty() || ( toupper(input[0]) != 'Y' && toupper(input[0]) != 'N') )
+    {
+        std::cout << "\n[Error]: First character of \'" << input << "\'" << "is not Y or N. Please input 'Y' or 'N'\n";
+        input = promptInput();
+    }
+    return toupper(input[0]);
 }
 
 std::string FrontEnd::promptInput()
@@ -248,14 +320,10 @@ void FrontEnd::endProgram()
         std::cout << "\n[Error]: Error displaying file system";
     }
     std::cout << "\nWould you like to save the state of the file system? [Y/N]\n";
-    std::string input = promptInput();
-    while(input.empty() || ( toupper(input[0]) != 'Y' && toupper(input[0]) != 'N') )
+    char cInput = getYesNoInput();
+    if(cInput == 'Y')
     {
-        std::cout << "\n[Error]: First character of \'" << input << "\'" << "is not Y or N. Please input 'Y' or 'N'\n";
-        input = promptInput();
-    }
-    if(input[0] == 'Y')
-    {
+        std::string input;
         while(true)
         {
             std::cout << "\nEnter name of the file to save to:";
@@ -278,13 +346,22 @@ void FrontEnd::endProgram()
 
 void FrontEnd::startInput()
 {
-    /*
-        Prompt user whether to load from file or start new session
-    */
+    STATUS_CODE status;
+    
+    std::cout << "\nWould you like to load from a saved file system state? [Y/N]:\n";
+    char cInput = getYesNoInput();
+    if(cInput == 'Y')
+    {
+        status = displayLoadList();
+        if(status != SUCCESS)
+        {
+            std::cout << "\nError loading file system from file!\n";
+        }
+    }
     
     InputResult processedInput;
     std::string input;
-    STATUS_CODE status;
+
     while(true)
     {
         printCommandList();

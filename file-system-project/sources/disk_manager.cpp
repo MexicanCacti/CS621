@@ -158,9 +158,9 @@ void DiskManager::DSAVE(std::ofstream& out)
     _diskWriter->saveFileSystem(out);
 }
 
-void DiskManager::DLOAD(std::ifstream& in)
+STATUS_CODE DiskManager::DLOAD(std::ifstream& in)
 {
-    _diskWriter->loadFileSystem(in);
+    return _diskWriter->loadFileSystem(in);
 }
 
 Block* DiskManager::DREAD(const unsigned int& blockNumber)

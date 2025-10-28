@@ -453,11 +453,28 @@ STATUS_CODE SystemManager::displayFileSystem()
 void SystemManager::SAVE(const std::string& fileName)
 {
     std::ofstream saveFile;
-    saveFile.open(fileName, std::ios::out | std::ios::trunc);
-    if(!saveFile.is_open()) return;
+    saveFile.open(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
+    if(!saveFile.is_open() || saveFile.fail())
+    {
+        std::cerr << "[SAVE] Could not open or write to save file: " << fileName << std::endl;
+        return;
+    }
     _diskManager.DSAVE(saveFile);
+
+    saveFile.flush();
     saveFile.close();
+
+    return;
 }
+
+STATUS_CODE SystemManager::LOAD(const std::string& fileName)
+{
+    std::ifstream loadFile;
+    loadFile.open(fileName);
+    if(!loadFile.is_open()) return NO_FILE_OPEN;
+    return _diskManager.DLOAD(loadFile);
+}
+
 char* SystemManager::getFileName()
 {
     if(!_lastOpened) return nullptr;
