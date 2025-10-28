@@ -16,7 +16,8 @@ SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
             dir != nullptr; 
             dir = (dir->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager._blockMap.at(dir->getNextBlock())) : nullptr)
         {
-            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
+            for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) 
+            {
                 Entry& e = dir->getDir()[i];
                 if(e.TYPE != 'F' && strncmp(e.NAME, currentName.c_str(), MAX_NAME_LENGTH - 1) == 0) {
                     nameBuffer.pop_front();

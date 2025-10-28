@@ -1,5 +1,17 @@
 #include "../headers/front_end.hpp"
 
+bool FrontEnd::containsInvalidChars(std::string& input)
+{
+    for(char& c : input)
+    {
+        for(unsigned int i = 0 ; invalidFileChars[i] != '\0'; ++i)
+        {
+            if(c == invalidFileChars[i]) return true;
+        }
+    }
+    return false;
+}
+
 std::deque<std::string> FrontEnd::tokenizeInput(std::string& input)
 {
     std::deque<std::string> tokens;
@@ -72,7 +84,8 @@ void FrontEnd::printCommandList()
         {"READ", "BYTES", {"BYTES\t: integer"}},
         {"WRITE", "BYTES 'DATA'", {"BYTES\t: integer", "'DATA'\t: string", "DATA must be enclosed by ' '"}},
         {"SEEK", "BASE OFFSET", {"BASE\t: integer", "OFFSET\t: integer"}},
-        {"DISPLAY", "", {"Displays File System Structure"}}
+        {"DISPLAY", "", {"Displays File System Structure"}},
+        {"QUIT", "", {"Exits Program"}}
     };
     const int commandWidth = 10;
     const int argWidth = 15;
@@ -179,6 +192,8 @@ InputResult FrontEnd::processInput(std::string& input)
                 return {BAD_ARG, "INVALID DISPLAY ARGS"};
             }
             break;
+        case CommandCode::QUIT:
+            break;
         default:
             return {BAD_ARG, "NO MATCHING COMMAND"};
     }
@@ -186,9 +201,6 @@ InputResult FrontEnd::processInput(std::string& input)
     return processedInput;
 }
 
-/*
-NOTE: WRITE NEEDS WAY TO SIGNAL IF DISK CANT WRITE ALL BYTES OF DATA
-*/
 STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
 {
     std::pair<STATUS_CODE, std::string> readResult;
@@ -221,9 +233,47 @@ STATUS_CODE FrontEnd::runInput(InputResult& processedInput)
             return _systemManager.SEEK(processedInput._intArg1, processedInput._intArg2);
         case CommandCode::DISPLAY:
             return _systemManager.displayFileSystem();
+        case CommandCode::QUIT:
+            return QUIT_PROGRAM;
         default:
             return BAD_ARG;
     }
+}
+
+void FrontEnd::endProgram()
+{
+    STATUS_CODE status = _systemManager.displayFileSystem();
+    if(!status == SUCCESS)
+    {
+        std::cout << "\n[Error]: Error displaying file system";
+    }
+    std::cout << "\nWould you like to save the state of the file system? [Y/N]\n";
+    std::string input = promptInput();
+    while(input.empty() || ( toupper(input[0]) != 'Y' && toupper(input[0]) != 'N') )
+    {
+        std::cout << "\n[Error]: First character of \'" << input << "\'" << "is not Y or N. Please input 'Y' or 'N'\n";
+        input = promptInput();
+    }
+    if(input[0] == 'Y')
+    {
+        while(true)
+        {
+            std::cout << "\nEnter name of the file to save to:";
+            std::cout << "\nFile name cannot include: [ ";
+            for(char& c : invalidFileChars)
+            {
+                std::cout << c << " ";
+            }
+            std::cout << "]\n";
+            input = promptInput();
+            if(!containsInvalidChars(input)) break;
+            std::cout << "[Error]: " << input << " contains an invalid char.\n";
+        }
+        input.append(".txt");
+        std::cout << "Saving file system to " << input << "...\n";
+        _systemManager.SAVE(input);
+    }
+
 }
 
 void FrontEnd::startInput()
@@ -248,12 +298,14 @@ void FrontEnd::startInput()
             continue;
         }
         status = runInput(processedInput);
+        if(status == QUIT_PROGRAM) break;
         if(status != SUCCESS)
         {
             std::cout << "[ERROR CODE]: " << statusToString(status) << std::endl;
             continue;
         }
     }
+    endProgram();
 }
 
 int main()

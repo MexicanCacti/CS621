@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 
+char invalidFileChars[10] = {'/', '<', '>', ':', '\"', '\\', '|', '?', '*', '\0'};
+
 enum class CommandCode
 {
     CREATE,
@@ -13,6 +15,7 @@ enum class CommandCode
     WRITE,
     SEEK,
     DISPLAY,
+    QUIT,
     UNKNOWN
 };
 
@@ -26,6 +29,7 @@ CommandCode hashCommand(const std::string& command)
     if(command == "WRITE")      return CommandCode::WRITE;
     if(command == "SEEK")       return CommandCode::SEEK;
     if(command == "DISPLAY")    return CommandCode::DISPLAY;
+    if(command == "QUIT")       return CommandCode::QUIT;
     return CommandCode::UNKNOWN;
 }
 

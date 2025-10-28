@@ -99,6 +99,7 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
         if(status != SUCCESS) return {status, nullptr, type};
         addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock);
         directory = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(freeBlock));
+        if(!directory) return {CASTING_ERROR, nullptr, type};
         nameBufferQueue.pop_front();
         nextFreeEntry = directory->findFreeEntry();
     }
@@ -106,5 +107,78 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
     auto [status, freeBlock] = _diskManager.allocateBlock(type);
     if(status != SUCCESS) return {status, nullptr, type};
     return addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.back().c_str(), type, freeBlock);
+}
 
+void DiskWriter::saveFileSystem(std::ofstream& out)
+{
+    std::queue<std::pair<unsigned int, char>> blockQueue;
+    std::vector<std::vector<SaveType>> blockEntries(NUM_BLOCKS);
+
+    blockQueue.push({0, 'D'});
+
+    while(!blockQueue.empty())
+    {
+        unsigned int queueSize = blockQueue.size();
+        for(unsigned int i = 0 ; i < queueSize; ++i)
+        {
+            auto[blockNum, type] = blockQueue.front();
+            blockQueue.pop();
+            if(type == 'D')
+            {
+                DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(blockNum));
+                if(!dirBlock) continue;
+                for(dirBlock;
+                    dirBlock != nullptr;
+                    dirBlock = (blockNum != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlock->getNextBlock())) : nullptr)
+                {
+                    auto dir = dirBlock->getDir();
+                    for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i)
+                    {
+                        Entry& e = dir[i];
+                        if(e.TYPE == 'D')
+                        {
+                            DirectoryBlock* dEntry = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(e.LINK));
+                            blockEntries[blockNum].push_back(SaveType(e.NAME, e.TYPE, e.LINK, dEntry->getPrevBlock(), dEntry->getNextBlock()));
+                            blockQueue.push({e.LINK, e.TYPE});
+                        }
+                        else if(e.TYPE == 'U')
+                        {
+                            UserDataBlock* uEntry = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(e.LINK));
+                            blockEntries[blockNum].push_back(SaveType(e.NAME, e.TYPE, e.LINK, uEntry->getPrevBlock(), uEntry->getNextBlock(), e.SIZE, uEntry->getUserData(), uEntry->getUserDataSize()));
+                            if(uEntry->getNextBlock() != 0) blockQueue.push({e.LINK, e.TYPE}); // Meaning this UserDataBlock has chained blocks
+                        }
+                    }
+                    blockNum = dirBlock->getNextBlock();
+                }
+            }
+            // Get the chained blocks of the base UserDataBlock
+            else if(type == 'U')
+            {
+                UserDataBlock* userBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(blockNum));
+                if(!userBlock) continue;
+                unsigned int currentBlockNumber = userBlock->getNextBlock();
+                while(currentBlockNumber != 0)
+                {
+                    userBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(currentBlockNumber));
+                    if(!userBlock) break;
+                    blockEntries[blockNum].push_back(SaveType(nullptr, 'U', currentBlockNumber, userBlock->getPrevBlock(), userBlock->getNextBlock(), 0, userBlock->getUserData(), userBlock->getUserDataSize()));
+                    currentBlockNumber = userBlock->getNextBlock();
+                }
+            }
+        }
+    }
+
+    for(unsigned int i = 0 ; i < NUM_BLOCKS; ++i)
+    {
+        out << i << "\n";
+        for(SaveType& saveOutput : blockEntries[i])
+        {
+            saveOutput.save(1, out);
+        }
+    }
+}
+
+void DiskWriter::loadFileSystem(std::ifstream& in)
+{
+    
 }

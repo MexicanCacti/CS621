@@ -5,6 +5,7 @@
 #include "../utils/entry_info.hpp"
 #include <deque>
 #include <algorithm>
+#include <fstream>
 
 class SystemManager{
     protected:
@@ -26,6 +27,7 @@ class SystemManager{
         STATUS_CODE WRITE(const int& numBytes, const std::string& writeBuffer);
         STATUS_CODE SEEK(const int& base, const int& offset);
         STATUS_CODE displayFileSystem();
+        void SAVE(const std::string& fileName);
         bool hasOpenFile() {return _lastOpened != nullptr;}
         char* getFileName();
         char getFileMode() {return _fileMode;}

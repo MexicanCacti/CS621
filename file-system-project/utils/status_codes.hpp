@@ -11,6 +11,7 @@ enum STATUS_CODE{
     CASTING_ERROR,
     BOUNDS_ERROR,
     ILLEGAL_ACCESS,
+    QUIT_PROGRAM,
     OUT_OF_MEMORY
 };
 
@@ -27,6 +28,7 @@ inline std::string statusToString(STATUS_CODE code) {
         case STATUS_CODE::BOUNDS_ERROR:     return "BOUNDS_ERROR";
         case STATUS_CODE::ILLEGAL_ACCESS:   return "ILLEGAL_ACCESS";
         case STATUS_CODE::OUT_OF_MEMORY:    return "OUT_OF_MEMORY";   
+        case STATUS_CODE::QUIT_PROGRAM:     return "QUIT_PROGRAM";
         default:                          return "UNKNOWN_STATUS_CODE";
     }
 };

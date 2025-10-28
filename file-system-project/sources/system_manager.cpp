@@ -86,8 +86,8 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
                 EntryInfo entry = entries[j];
                 if(entry._entryType == 'U')
                 {
-                    numUserBlocks += 1;
-                    freeBlocks -= 1;
+                    numUserBlocks += entry._numBlocks;
+                    freeBlocks -= entry._numBlocks;
                 }
                 std::cout << std::setw(dirWidth) << (j == 0 ? dirName : "");
                 std::cout << std::setw(entryWidth) << entry._entryName;
@@ -205,9 +205,6 @@ STATUS_CODE SystemManager::CLOSE()
     return SUCCESS;
 }
 
-/*
-    TODO: IF DELETING PARENT DIRECTORY OF FILE THAT IS OPEN, CLOSE THE FILE
-*/
 STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
 {
     std::deque<std::string> nameBufferQueue = tokenizeString(nameBuffer, PATH_DELIMITER);
@@ -441,9 +438,10 @@ STATUS_CODE SystemManager::displayFileSystem()
             }
             else if(e.TYPE == 'U')
             {
-                unsigned int prevBlocksBytesAllocated = (_diskManager.countNumBlocks(e.LINK) - 1 ) * USER_DATA_SIZE;
+                unsigned int numBlocks = _diskManager.countNumBlocks(e.LINK);
+                unsigned int prevBlocksBytesAllocated = (numBlocks - 1 ) * USER_DATA_SIZE;
                 unsigned int lastBlockSize = e.SIZE;
-                entryList.push_back({e.NAME, e.TYPE, prevBlocksBytesAllocated + lastBlockSize});
+                entryList.push_back({e.NAME, e.TYPE, numBlocks, prevBlocksBytesAllocated + lastBlockSize});
             }
             
         }
@@ -452,6 +450,14 @@ STATUS_CODE SystemManager::displayFileSystem()
     return STATUS_CODE::SUCCESS;
 }
 
+void SystemManager::SAVE(const std::string& fileName)
+{
+    std::ofstream saveFile;
+    saveFile.open(fileName, std::ios::out | std::ios::trunc);
+    if(!saveFile.is_open()) return;
+    _diskManager.DSAVE(saveFile);
+    saveFile.close();
+}
 char* SystemManager::getFileName()
 {
     if(!_lastOpened) return nullptr;
