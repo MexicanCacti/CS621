@@ -50,11 +50,12 @@ std::pair<STATUS_CODE, DirectoryBlock*> const DiskWriter::chainDirectoryBlock(Di
 
 }
 
-WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum)
+WriteResult const DiskWriter::addEntryToDirectory(DirectoryBlock* const directory, const unsigned int& entryIndex, const char* name, const char& type, const unsigned int& blockNum, unsigned int size)
 {
     if(entryIndex > MAX_DIRECTORY_ENTRIES) return {BAD_ARG, nullptr, type};
     
-    directory->getDir()[entryIndex] = Entry(name, type, blockNum, 0);
+    //std::cout << "ADDING: " << name << "TO DIRECTORY ENTRY:" << entryIndex << std::endl;
+    directory->getDir()[entryIndex] = Entry(name, type, blockNum, size);
 
     return {SUCCESS, &directory->getDir()[entryIndex], type};
 }
@@ -97,7 +98,7 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
         std::string bufferString = nameBufferQueue.front();
         auto [status, freeBlock] = _diskManager.allocateBlock('D');
         if(status != SUCCESS) return {status, nullptr, type};
-        addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock);
+        addEntryToDirectory(directory, nextFreeEntry, bufferString.c_str(), 'D', freeBlock, 0);
         directory = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(freeBlock));
         if(!directory) return {CASTING_ERROR, nullptr, type};
         nameBufferQueue.pop_front();
@@ -106,7 +107,7 @@ WriteResult const DiskWriter::createToFile(std::deque<std::string>& existingPath
 
     auto [status, freeBlock] = _diskManager.allocateBlock(type);
     if(status != SUCCESS) return {status, nullptr, type};
-    return addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.back().c_str(), type, freeBlock);
+    return addEntryToDirectory(directory, nextFreeEntry, nameBufferQueue.front().c_str(), type, freeBlock, 0);
 }
 
 void DiskWriter::saveFileSystem(std::ofstream& out)
@@ -161,7 +162,7 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
                 {
                     userBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(currentBlockNumber));
                     if(!userBlock) break;
-                    blockEntries[blockNum].push_back(SaveType(nullptr, 'U', currentBlockNumber, userBlock->getPrevBlock(), userBlock->getNextBlock(), 0, userBlock->getUserData(), userBlock->getUserDataSize()));
+                    blockEntries[blockNum].push_back(SaveType(nullptr, 'C', currentBlockNumber, userBlock->getPrevBlock(), userBlock->getNextBlock(), 0, userBlock->getUserData(), userBlock->getUserDataSize()));
                     currentBlockNumber = userBlock->getNextBlock();
                 }
             }
@@ -170,32 +171,88 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
 
     for(unsigned int i = 0 ; i < NUM_BLOCKS; ++i)
     {
-        // Debug: report how many entries we will write for this block
-        std::cout << "[DSAVE] block " << i << " has " << blockEntries[i].size() << " entries\n";
-        std::cout.flush();
-
         out << i << "\n";
 
         for(SaveType& saveOutput : blockEntries[i])
         {
-            // Debug: print a short description of the entry being written
-            std::cout << "[DSAVE]   writing entry type=" << saveOutput._TYPE
-                    << " block=" << saveOutput._blockNumber
-                    << " name=" << saveOutput._NAME
-                    << " dataSize=" << saveOutput._dataSize << "\n";
-            std::cout.flush();
-
             saveOutput.save(1, out);
-
-            // flush the file periodically to ensure bytes hit disk
             out.flush();
         }
     }
 }
 
-STATUS_CODE DiskWriter::loadFileSystem(std::ifstream& in)
+std::unordered_set<unsigned int> DiskWriter::loadFileSystem(std::ifstream& in)
 {
-    
-    
-    return SUCCESS;
+    std::unordered_set<unsigned int> allocatedBlocks;
+    std::string line;
+
+    while(std::getline(in, line))
+    {
+        if(line.empty() || line[0] == '\t') continue;
+
+        unsigned int baseBlock = std::stoul(line);
+        unsigned int startByte = 0;
+        std::streampos savePos = in.tellg();
+        std::string nextLine;
+        if(!std::getline(in, nextLine)) break;
+        if(nextLine.empty()) continue;
+
+        if(nextLine[0] == '\t') nextLine.erase(0, 1);
+
+        char type = nextLine.empty() ? '\0' : nextLine[0];
+        in.seekg(savePos);
+
+        if(type == 'D')
+        {
+            DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(baseBlock));
+            unsigned int entryIndex = 0;
+            while(true)
+            {
+                std::streampos pos = in.tellg();
+                
+                if(!std::getline(in, nextLine)) break;
+                if(nextLine[0] != '\t')
+                {
+                    in.seekg(pos);
+                    break;
+                }
+                nextLine.erase(0, 1);
+                SaveType loadEntry(nextLine);
+                if(loadEntry._TYPE == 'D')
+                {
+                    _diskManager.DWRITE(loadEntry._blockNumber, new DirectoryBlock(loadEntry._prevBlockNumber, loadEntry._nextBlockNumber));
+                    dirBlock->getDir()[entryIndex++] = Entry(loadEntry._NAME.c_str(), loadEntry._TYPE, loadEntry._blockNumber, loadEntry._SIZE);
+                    allocatedBlocks.insert(loadEntry._blockNumber);
+                }
+                else if(loadEntry._TYPE == 'U')
+                {
+                    _diskManager.DWRITE(loadEntry._blockNumber, new UserDataBlock(loadEntry._prevBlockNumber, loadEntry._nextBlockNumber));
+                    UserDataBlock* userBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(loadEntry._blockNumber));
+                    writeToBlock(userBlock, loadEntry._DATA.data(), loadEntry._dataSize, startByte, startByte);
+                    dirBlock->getDir()[entryIndex++] = Entry(loadEntry._NAME.c_str(), loadEntry._TYPE, loadEntry._blockNumber, loadEntry._SIZE);
+                    allocatedBlocks.insert(loadEntry._blockNumber);
+                }
+            }
+        }
+        else if(type == 'C')
+        {
+            while(true)
+            {
+                std::streampos pos = in.tellg();
+                if(!std::getline(in, nextLine)) break;
+                if(nextLine[0] != '\t')
+                {
+                    in.seekg(pos);
+                    break;
+                }
+                nextLine.erase(0, 1);
+                SaveType loadEntry(nextLine);
+                _diskManager.DWRITE(loadEntry._blockNumber, new UserDataBlock(loadEntry._prevBlockNumber, loadEntry._nextBlockNumber));
+                UserDataBlock* userBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(loadEntry._blockNumber));
+                writeToBlock(userBlock, loadEntry._DATA.data(), loadEntry._dataSize, startByte, startByte);
+                allocatedBlocks.insert(loadEntry._blockNumber);
+            }
+        }
+    }
+    return allocatedBlocks;
 }

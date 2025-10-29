@@ -177,6 +177,7 @@ STATUS_CODE FrontEnd::displayLoadList()
     }
     
     if(choice == numSaveFiles) return SUCCESS;
+    std::cout << "Loading file: " << loadList[choice] << std::endl;
     return _systemManager.LOAD(loadList[choice]);
 }
 
@@ -355,7 +356,7 @@ void FrontEnd::startInput()
         status = displayLoadList();
         if(status != SUCCESS)
         {
-            std::cout << "\nError loading file system from file!\n";
+            std::cout << "\nError loading file system from file!\t" << statusToString(status) << std::endl;
         }
     }
     

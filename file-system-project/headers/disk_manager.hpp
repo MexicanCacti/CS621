@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <string>
 #include <deque>
+#include <unordered_set>
 #include "../utils/status_codes.hpp"
 #include "../utils/search_result.hpp"
 #include "../utils/write_result.hpp"

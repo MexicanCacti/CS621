@@ -3,7 +3,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
-
+#include <iostream>
 struct SaveType
 {
     std::string _NAME;
@@ -39,22 +39,45 @@ struct SaveType
             tokens.push_back(fileLine.substr(startPos, splitPos - startPos));
             startPos = splitPos + 1;
         }
+
         // Directory Block
-        if(tokens.size() == 5)
+        if(tokens.size() >= 5)
         {
-            _NAME = tokens[0];
-            _TYPE = tokens[1][0];
-            _blockNumber = std::stoul(tokens[2]);
+            _TYPE = tokens[0][0];
+            _blockNumber = std::stoul(tokens[1]);
+            _NAME = tokens[2];
             _prevBlockNumber = std::stoul(tokens[3]);
             _nextBlockNumber = std::stoul(tokens[4]);
         }
         // User Data Block
-        if(tokens.size() == 8)
+        if(tokens.size() >= 8)
         {
             _SIZE = std::stoul(tokens[5]);
             _dataSize = std::stoul(tokens[7]);
             _DATA.assign(tokens[6].begin(), tokens[6].begin() + _dataSize);
         }
+        /*
+        std::cout << "Parsed line: [" << fileLine << "]\n";
+        std::cout << "Token count: " << tokens.size() << "\n";
+        for (size_t i = 0; i < tokens.size(); ++i)
+            std::cout << "  Token[" << i << "]: '" << tokens[i] << "'\n";
+
+        std::cout << "TYPE: " << _TYPE << "\n";
+        std::cout << "Block#: " << _blockNumber << "\n";
+        std::cout << "Name: " << _NAME << "\n";
+        std::cout << "Prev: " << _prevBlockNumber << "\n";
+        std::cout << "Next: " << _nextBlockNumber << "\n";
+        if (tokens.size() == 8)
+        {
+            std::cout << "Size: " << _SIZE << "\n";
+            std::cout << "DataSize: " << _dataSize << "\n";
+            std::cout << "Data: '";
+            for (size_t i = 0; i < _DATA.size(); ++i)
+                std::cout << _DATA[i];
+            }
+            "\'\n";
+        std::cout << "----------------------------------------\n";
+        */
     }
 
     void save(unsigned int tabAmount, std::ofstream& out)
@@ -64,12 +87,11 @@ struct SaveType
             out << "\t";
         }
         out << _TYPE << "\t" << _blockNumber << "\t" << (_NAME.empty() ? "Chained Block" : _NAME) << "\t" << _prevBlockNumber << "\t" << _nextBlockNumber;
-        if(_TYPE == 'U')
+        if(_TYPE == 'U' || _TYPE == 'C')
         {
             out << "\t" << _SIZE << "\t";
-            if(!_DATA.empty())
-                out.write(_DATA.data(), _DATA.size());
-            out << '\0' << "\t" << _dataSize;
+            out.write(_DATA.data(), _DATA.size());
+            out << "\t" << _dataSize;
         }
         out << "\n";
     }

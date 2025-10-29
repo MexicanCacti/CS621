@@ -35,7 +35,6 @@ DirectoryResults SystemManager::getDirectories()
             dirNames.push(dirName);
             DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlockNumber));
             if(!dirBlock) return {dirOrder, dirNames, CASTING_ERROR};
-
             for(dirBlock; 
                 dirBlock != nullptr; 
                 dirBlock = (dirBlock->getNextBlock() != 0) ? dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlock->getNextBlock())) : nullptr)
@@ -66,7 +65,6 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
     unsigned int numDirs = directoryEntries.size();
     unsigned int freeBlocks = NUM_BLOCKS - numDirs;
     unsigned int numUserBlocks = 0;
-
     std::cout << std::left << "Note: |x| indicates no entries in directory\n";
     std::cout << std::setw(dirWidth) << "Directory" << std::setw(entryWidth) << "Entry" << std::setw(typeWidth) << "Type";
     std::cout << std::setw(fileLengthWidth) << "Length (Bytes)" << std::endl;
@@ -126,10 +124,11 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
     // Found file with same name in last directory of given path
     if(status == SUCCESS)
     {
+        std::cout << "File or Directory with same name already exists!" << std::endl;
         writeResult = _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
         if(writeResult.status != SUCCESS) return writeResult.status;
         _lastOpened = writeResult.entry;
-        _fileMode = 'O';
+        if(type == 'U') _fileMode = 'O';
         return writeResult.status;
     }
     else if(status == NO_FILE_FOUND)
@@ -159,6 +158,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
 
         int numNeededFreeBlocks = needToCreate.size();
         if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return OUT_OF_MEMORY;
+        
         writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
 
         if(writeResult.status != SUCCESS) return writeResult.status;
@@ -166,6 +166,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
         if(writeResult.entry->TYPE == 'U')
         {
             _lastOpened = writeResult.entry;
+            _filePointer = 0;
             _fileMode = 'O';            
         }
 
@@ -258,7 +259,7 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
 
 std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numBytes)
 {
-    if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
+    if(_fileMode != 'U' && _fileMode != 'I') return {BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
 
     std::string readData = "";
@@ -471,7 +472,7 @@ STATUS_CODE SystemManager::LOAD(const std::string& fileName)
 {
     std::ifstream loadFile;
     loadFile.open(fileName);
-    if(!loadFile.is_open()) return NO_FILE_OPEN;
+    if(!loadFile.is_open() || loadFile.fail()) return NO_FILE_OPEN;
     return _diskManager.DLOAD(loadFile);
 }
 

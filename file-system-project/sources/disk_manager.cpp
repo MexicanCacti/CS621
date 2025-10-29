@@ -6,7 +6,7 @@ void DiskManager::initBlocks()
 {
     if(_numBlocks < 1) return;
 
-    _blockMap[0] = new DirectoryBlock(0, 1);
+    _blockMap[0] = new DirectoryBlock(0, 0);
 
     for(int i = 1 ; i < _numBlocks; ++i){
         _blockMap[i] = new Block(i - 1, i + 1);
@@ -44,7 +44,6 @@ int DiskManager::findFreeEntry(DirectoryBlock* const directory)
 }
 
 // Note, whenever allocate a block number, always free
-// Maybe have a public function for deleting a block?
 std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type)
 {
     DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(_blockMap[0]);
@@ -160,7 +159,31 @@ void DiskManager::DSAVE(std::ofstream& out)
 
 STATUS_CODE DiskManager::DLOAD(std::ifstream& in)
 {
-    return _diskWriter->loadFileSystem(in);
+    std::unordered_set<unsigned int> allocatedBlocks = _diskWriter->loadFileSystem(in);
+    if(allocatedBlocks.empty()) return BAD_ALLOC;
+    _numFreeBlocks -= allocatedBlocks.size();
+
+    // Rebuild freelist
+    unsigned int prevFreeBlock = 0;
+    unsigned int freeListHead = _numBlocks + 1;
+
+    for(unsigned int i = 1; i < _numBlocks; ++i)
+    {
+        if(allocatedBlocks.find(i) == allocatedBlocks.end())
+        {
+            Block* block = DREAD(i);
+            block->setPrevBlock(prevFreeBlock);
+            if(prevFreeBlock != 0) DREAD(prevFreeBlock)->setNextBlock(i);
+            if(freeListHead == _numBlocks + 1) freeListHead = i;
+            prevFreeBlock = i;
+        }
+    }
+
+    if(prevFreeBlock != 0) DREAD(prevFreeBlock)->setNextBlock(0);
+    DirectoryBlock* rootBlock = dynamic_cast<DirectoryBlock*>(DREAD(0));
+    if(!rootBlock) return CASTING_ERROR;
+    rootBlock->setFreeBlock(freeListHead);
+    return SUCCESS;
 }
 
 Block* DiskManager::DREAD(const unsigned int& blockNumber)
@@ -201,20 +224,19 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
 }
 
 // Write any block to disk
-// Actually, use this for loading!
 STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 {
+    _blockMap[blockNum] = blockPtr;
     return SUCCESS;
 }
 
 // Add/update entry
 WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type)
 {
-    // NOTE: Need a way to reverse the free if allocation fails!
     freeBlock(directory->getDir()[entryIndex].LINK);
     auto [status, allocatedBlock] = allocateBlock(type);
     if(status != SUCCESS) return {status, nullptr, type};
-    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock);
+    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock, 0);
 }
 
 // Write user data
