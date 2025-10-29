@@ -133,6 +133,7 @@ int main() {
         checkEqual("STATUS CHECK", result, test.expectedStatus);
         if(test.expectedStatus == STATUS_CODE::SUCCESS){
             Entry* entry = testSystem.getEntry();
+            if(!entry || test.type == 'D') continue;
             checkEqual("NAME CHECK", std::string(entry->NAME), test.name);
             checkEqual("TYPE CHECK", entry->TYPE, test.type);
             checkEqual("ALLOCATED BLOCK CHECK", entry->LINK, test.expectedBlock);

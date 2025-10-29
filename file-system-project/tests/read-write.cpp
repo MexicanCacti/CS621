@@ -105,24 +105,24 @@ int main() {
     std::vector<testType> readTests = {
         {
             108, 
-            "This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here.", 
+            "\"This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here.\"", 
             STATUS_CODE::SUCCESS,
         },
         {
             496,   
-            "This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
+            "\"This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
             "It repeats sentences to ensure precise byte length. Each sentence adds predictable characters. The goal is to simulate a long "
             "user file stored across several chained blocks. Consistency matters more than meaning in this test, but the text remains human "
-            "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now.", 
+            "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now.\"", 
             STATUS_CODE::SUCCESS
         },
         {
             58, 
-            "Fifty bytes of short data used for quick write tests only.",
+            "\"Fifty bytes of short data used for quick write tests only.\"\nEnd of File Reached",
             STATUS_CODE::SUCCESS
         }
     };
-
+    std::cout << "\nWRITE TESTS\n";
     for(auto& test : writeTests) {
         std::cout << "Test| NumBytes: " << test.writeBuffer.size() << "\tWriteBuffer: " << test.writeBuffer << std::endl;
         auto startTime = std::chrono::steady_clock::now();
@@ -131,12 +131,12 @@ int main() {
         auto timeTaken = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
         std::cout << "Time Taken: " << timeTaken << " Microseconds" << std::endl;
         checkEqual("STATUS CHECK", result, test.expectedStatus);
-        testSystem.SEEK(0, test.numBytes);
+        testSystem.SEEK(1, 0);
     }
     printSummary();
-
+    std::cout << "\nREAD TESTS\n";
     testSystem.SEEK(-1,0);
-    std::cout << "FileType: " << testSystem.getEntry()->TYPE << std::endl;
+    testSystem.OPEN('U', "file1");
     testsPassed = 0;
     testsFailed = 0;
     for(auto& test : readTests) {
@@ -154,12 +154,12 @@ int main() {
     }
 
     std::string entireFile =
-        "This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here."
+        "\"This file contains exactly one hundred bytes of readable text used for a basic write test sample entry here."
         "This text block contains six hundred bytes of content used to verify multi-block write operations in the virtual disk system. "
         "It repeats sentences to ensure precise byte length. Each sentence adds predictable characters. The goal is to simulate a long "
         "user file stored across several chained blocks. Consistency matters more than meaning in this test, but the text remains human "
         "readable and grammatically coherent for debugging purposes. Additional filler ensures we hit the exact byte mark now."
-        "Fifty bytes of short data used for quick write tests only.";
+        "Fifty bytes of short data used for quick write tests only.\"";
 
     std::cout << "\nENTIRE FILE CHECK" << std::endl;
     auto [readAllResult, readAllBuffer] = testSystem.READALL();

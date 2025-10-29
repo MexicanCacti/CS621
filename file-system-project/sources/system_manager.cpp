@@ -262,7 +262,7 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
     if(_fileMode != 'U' && _fileMode != 'I') return {BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
 
-    std::string readData = "";
+    std::string readData = "\"";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
 
@@ -292,6 +292,7 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         readBytes -= bytesToRead;
         if(dataBlock->getNextBlock() == 0 && readStart + bytesToRead >= bytesInBlock) readData.append("\"\nEnd of File Reached");
         else if(dataBlock->getNextBlock() == 0) readData.append("\"");
+        else if(readBytes == 0) readData.append("\"");
         readBlock = dataBlock->getNextBlock();
         (readBlock == 0) ? dataBlock = nullptr : dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(readBlock));
         readStart = 0;
@@ -387,12 +388,12 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
         startByte = 0;
     }
     else if(base == 1){
-        startByte = lastByte; // Last Byte is EOF
+        startByte = lastByte + 1; // Last Byte is EOF
     }
     int seekByte = startByte + offset;
 
     if(seekByte < 0) seekByte = 0;
-    if(static_cast<unsigned int>(seekByte) > lastByte) seekByte = lastByte;
+    if(static_cast<unsigned int>(seekByte) > lastByte) seekByte = lastByte + 1;
 
     _filePointer = seekByte;
     return SUCCESS;

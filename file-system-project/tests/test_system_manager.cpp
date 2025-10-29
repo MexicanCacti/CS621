@@ -102,7 +102,7 @@ STATUS_CODE TestSystemManager::WRITE(const int& numBytes, const std::string& wri
         if(allocStatus != STATUS_CODE::SUCCESS) return allocStatus;
         currentBlock->setNextBlock(newBlock);
         currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(newBlock));
-        if(!currentBlock) return STATUS_CODE::UNKNOWN_ERROR;
+        if(!currentBlock) return STATUS_CODE::ILLEGAL_ACCESS;
         currentBlock->setPrevBlock(writeBlock);
         writeBlock = newBlock;
 
@@ -174,7 +174,7 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
     std::cout << "----------------------------In TestSystemManager READALL-----------------------\n";
     if(_fileMode != 'U') return {BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
-    std::string readData = "";
+    std::string readData = "\"";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
     std::cout << "Number of blocks in file: " << _diskManager.countNumBlocks(_lastOpened->LINK) << std::endl;
@@ -193,5 +193,6 @@ std::pair<STATUS_CODE, std::string> TestSystemManager::READALL()
     }
 
     std::cout << "----------------------------READALL COMPLETE-----------------------\n\n";
+    readData.append("\"");
     return {SUCCESS, readData};
 }

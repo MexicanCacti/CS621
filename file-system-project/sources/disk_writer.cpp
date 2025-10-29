@@ -11,20 +11,27 @@ STATUS_CODE const DiskWriter::writeToBlock(UserDataBlock* dataBlock, const char*
     unsigned int dataLength = dataBlock->getUserDataSize();
     char tempData [USER_DATA_SIZE + 1] = {0};
 
-    unsigned int prevBytes = std::min<unsigned int>(startByte, dataLength);
-    for(int i = 0 ; i < prevBytes ; ++i)
+    unsigned int headBytes = std::min<unsigned int>(startByte, dataLength);
+    for(unsigned int i = 0 ; i < headBytes ; ++i)
     {
         tempData[i] = userData[i];
     }
 
     unsigned int writeBytes = std::min<unsigned int>(bytes, USER_DATA_SIZE - startByte);
-    for(int i = 0 ; i < writeBytes; ++i)
+    for(unsigned int i = 0 ; i < writeBytes; ++i)
     {
         tempData[i + startByte] = data[i + bufferStart];
     }
 
+    unsigned int tailBytes = dataLength;
+    for(unsigned int i = startByte + writeBytes ; i < tailBytes; ++i)
+    {
+        tempData[i] = userData[i];
+    }
+
     int lastByteIndex = startByte + writeBytes;
     if(lastByteIndex > USER_DATA_SIZE) lastByteIndex = USER_DATA_SIZE;
+    if(lastByteIndex < dataLength) lastByteIndex = dataLength + 1;
     tempData[lastByteIndex] = '\0';
 
     dataBlock->setUserData(tempData);
@@ -202,7 +209,7 @@ std::unordered_set<unsigned int> DiskWriter::loadFileSystem(std::ifstream& in)
         char type = nextLine.empty() ? '\0' : nextLine[0];
         in.seekg(savePos);
 
-        if(type == 'D')
+        if(type == 'D' || type == 'U')
         {
             DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(baseBlock));
             unsigned int entryIndex = 0;
