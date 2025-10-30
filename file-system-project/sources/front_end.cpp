@@ -111,7 +111,7 @@ void FrontEnd::printCommandList()
     const int commandWidth = 10;
     const int argWidth = 15;
     const int noteWidth = 20;
-    std::cout << std::left << "\n\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
+    std::cout << std::left << "\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
     std::cout << std::setw(commandWidth) << "Command";
     std::cout << std::setw(argWidth) << "Arg Order";
     std::cout << std::setw(noteWidth) << "Special Notes";
@@ -179,6 +179,40 @@ STATUS_CODE FrontEnd::displayLoadList()
     if(choice == numSaveFiles) return SUCCESS;
     std::cout << "Loading file: " << loadList[choice] << std::endl;
     return _systemManager.LOAD(loadList[choice]);
+}
+
+void FrontEnd::processFile(std::string& inputDataFile)
+{
+    std::ifstream in(inputDataFile);
+    if(!in.is_open())
+    {
+        std::cerr << "[ERROR]: Could not open file {" << inputDataFile << "}" << std::endl;
+        return;  
+    }
+
+    std::string inputLine;
+    unsigned int lineNumber = 0;
+    while(std::getline(in, inputLine))
+    {
+        ++lineNumber;
+        if(inputLine.empty()) continue;
+
+        InputResult result = processInput(inputLine);
+        if(result._status != SUCCESS)
+        {
+            std::cerr << "[ERROR]: Line [" << lineNumber << "]: " << result._errorMessage << std::endl;
+            continue;
+        }
+
+        STATUS_CODE status = runInput(result);
+        if(status != SUCCESS)
+        {
+            std::cerr << "Line [" << lineNumber << "]: Returned " << statusToString(status) << std::endl;
+        }
+        if(status == QUIT_PROGRAM) break;
+    }
+
+    in.close();
 }
 
 char FrontEnd::getYesNoInput()
@@ -345,6 +379,78 @@ void FrontEnd::endProgram()
 
 }
 
+bool FrontEnd::readInputData()
+{
+    std::cout << "\nWould you like to process commands from a input data text file? [Y/N]:\n";
+    char cInput = getYesNoInput();
+    if(cInput == 'Y')
+    {
+        std::vector<std::string> inputDataFiles = findInputData();
+        if(inputDataFiles.empty())
+        {
+            std::cout << "\nNo save files found!\n";
+            return false;
+        }
+        unsigned int numInputFiles = inputDataFiles.size();
+        for(unsigned int i = 0 ; i < numInputFiles; ++i)
+        {
+            std::cout << "[" << i << "]: " << inputDataFiles[i] << std::endl;
+        }
+        std::cout << "[" << numInputFiles << "]: \tCancel Input Data File Entry" << std::endl;
+
+        std::cout << "Select a number [" << 0 << " - " << numInputFiles << "] to use:\n";
+        std::string input;
+        unsigned int choice = 0;
+        while(true)
+        {
+            input = promptInput();
+            try{
+                choice = std::stoul(input);
+            }
+            catch(const std::exception& e)
+            {
+                std::cout << "Invalid input, enter a number between [" << 0 << " to " << numInputFiles << "] to load:\n";
+                continue;
+            }
+            if(choice > numInputFiles)
+            {
+                std::cout << "Invalid input, enter a number between [" << 0 << " to " << numInputFiles << "] to load:\n";
+            }
+            else break;
+        }
+        
+        if(choice == numInputFiles) return false;
+        std::cout << "Using file: " << inputDataFiles[choice] << std::endl;
+
+        startInput(inputDataFiles[choice]);
+        
+        return true;
+    }
+    return false;
+}
+
+std::vector<std::string> FrontEnd::findInputData()
+{
+    std::vector<std::string> fileList;
+    const fs::path currentWorkingDirectory = fs::current_path();
+    std::cout << "Searching Input data text file in Path: " << currentWorkingDirectory.string() << std::endl;
+    std::cout << "Expecting Input data text file to have a \'.txt\' extension." << std::endl;
+    std::error_code error;
+    for(const auto& entry : fs::directory_iterator(currentWorkingDirectory, error))
+    {
+        if(error)
+        {
+            std::cerr << "Error finding input data files: " << error.message();
+            break;
+        }
+        fs::path filePath = entry.path();
+        if(!fs::is_regular_file(filePath)) continue;
+
+        if(filePath.extension() == ".txt") fileList.push_back(filePath.string());
+    }
+    return fileList;
+}
+
 void FrontEnd::startInput()
 {
     STATUS_CODE status;
@@ -386,10 +492,31 @@ void FrontEnd::startInput()
     endProgram();
 }
 
+void FrontEnd::startInput(std::string& inputFile)
+{
+    STATUS_CODE status;
+    
+    std::cout << "\nWould you like to load from a saved file system state? [Y/N]:\n";
+    char cInput = getYesNoInput();
+    if(cInput == 'Y')
+    {
+        status = displayLoadList();
+        if(status != SUCCESS)
+        {
+            std::cout << "\nError loading file system from file!\t" << statusToString(status) << std::endl;
+        }
+    }
+    
+    processFile(inputFile);
+    endProgram();
+}
+
 int main()
 {
     DiskManager diskManager(NUM_BLOCKS, BLOCK_SIZE, USER_DATA_SIZE);
     SystemManager systemManager(diskManager);
     FrontEnd frontEnd(systemManager);
-    frontEnd.startInput();
+    if(!frontEnd.readInputData()) frontEnd.startInput();
+    
+    
 }

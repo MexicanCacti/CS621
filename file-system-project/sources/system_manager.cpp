@@ -100,7 +100,7 @@ void SystemManager::outputFileSystem(std::vector<std::string>& dirNames, std::ve
     std::cout << std::setw(userCountWidth) << "User Data Block Count" << std::endl;
     std::cout << std::setw(freeBlockWidth) << std::to_string(freeBlocks);
     std::cout << std::setw(dirCountWidth) << std::to_string(numDirs);
-    std::cout << std::setw(userCountWidth) << std::to_string(numUserBlocks);
+    std::cout << std::setw(userCountWidth) << std::to_string(numUserBlocks) << std::endl;
 }
 
 
@@ -261,11 +261,10 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
 {
     if(_fileMode != 'U' && _fileMode != 'I') return {BAD_FILE_MODE, "BADFILEMODE"};
     if(!_lastOpened) return {NO_FILE_OPEN, "NOFILEOPEN"};
-
     std::string readData = "\"";
     UserDataBlock* dataBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(_lastOpened->LINK));
     if(!dataBlock) return {CASTING_ERROR, "NOLINKTODATABLOCK"};
-
+    if(numBytes == 0) return {SUCCESS, "\"\""};
     unsigned int readBytes = numBytes;
     unsigned int pointerBlock = _filePointer / USER_DATA_SIZE;
     unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;

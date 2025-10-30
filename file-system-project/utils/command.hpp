@@ -3,8 +3,6 @@
 #include <iostream>
 #include <vector>
 
-char invalidFileChars[10] = {'/', '<', '>', ':', '\"', '\\', '|', '?', '*', '\0'};
-
 enum class CommandCode
 {
     CREATE,

@@ -12,6 +12,7 @@ namespace fs = std::filesystem;
 
 class FrontEnd {
     private:
+        char invalidFileChars[10] = {'/', '<', '>', ':', '\"', '\\', '|', '?', '*', '\0'};
         SystemManager& _systemManager;
         bool containsInvalidChars(std::string& input);
         std::vector<std::string> findSaveFiles();
@@ -22,6 +23,7 @@ class FrontEnd {
         static bool tokensLeft(std::deque<std::string>& tokens) {return !tokens.empty();}
         void printCommandList();
         STATUS_CODE displayLoadList();
+        void processFile(std::string& inputDataFile);
         char getYesNoInput();
         std::string promptInput();
         InputResult processInput(std::string& input);
@@ -30,5 +32,8 @@ class FrontEnd {
 
     public:
         FrontEnd(SystemManager& systemManager) : _systemManager(systemManager) {};
+        bool readInputData();
+        std::vector<std::string> findInputData();
         void startInput();
+        void startInput(std::string& inputDataFile);
 };
