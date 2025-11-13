@@ -213,7 +213,15 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
     STATUS_CODE status = searchResult.statusCode;
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
-
+    bool isOpenFile = false;
+    if(_lastOpened && parentDir)
+    {
+        Entry* toDelete = &parentDir->getDir()[entryIndex];
+        if(_lastOpened->NAME == toDelete->NAME)
+        {
+            isOpenFile = true;
+        }
+    }
     if(!parentDir) return NO_FILE_FOUND;
     Entry* toDelete = &parentDir->getDir()[entryIndex];
     // Search to see if open file is descendent of directory being deleted
@@ -253,6 +261,12 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
         
     }
     _diskManager.freeBlock(toDelete->LINK);
+    if(isOpenFile)
+    {
+        _lastOpened = nullptr;
+        _fileMode = 'I';
+        _filePointer = 0;
+    }
     toDelete->TYPE = 'F';
     return SUCCESS;
 }
