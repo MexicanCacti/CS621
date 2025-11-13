@@ -277,6 +277,7 @@ InputResult FrontEnd::processInput(std::string& input)
             break;
         case CommandCode::WRITE:
             if(!getIntToken(tokens, processedInput._intArg1)) return {BAD_ARG, "INVALID WRITE ARGS"};
+            if(processedInput._intArg1 <= 0) return {BAD_ARG, "BYTES TO WRITE MUST BE GREATER THAN 0"};
             while(tokensLeft(tokens))
             {
                 std::string tokenString;
