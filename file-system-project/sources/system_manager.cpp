@@ -115,6 +115,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
     std::deque<std::string> fullPath = tokenizeString(nameBuffer, PATH_DELIMITER);
     std::deque<std::string> fullPathCopy = fullPath; // To keep full path intact since findFile modifies the deque
     std::string fileName = fullPath.back();
+    if(fileName.length() > MAX_NAME_LENGTH) return BAD_NAME_LENGTH;
     SearchResult searchResult = _diskManager.findFile(fullPath);
     STATUS_CODE status = searchResult.statusCode;
     DirectoryBlock* parentDir = searchResult.directory;
