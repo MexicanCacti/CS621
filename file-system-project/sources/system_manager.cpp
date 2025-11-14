@@ -124,7 +124,7 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
     // Found file with same name in last directory of given path
     if(status == SUCCESS)
     {
-        std::cout << "File or Directory with same name already exists!" << std::endl;
+        std::cout << "File or Directory with same name already exists! Replacing File/Dir." << std::endl;
         writeResult = _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
         if(writeResult.status != SUCCESS) return writeResult.status;
         _lastOpened = writeResult.entry;
