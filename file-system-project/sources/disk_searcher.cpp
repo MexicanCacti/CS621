@@ -19,7 +19,7 @@ SearchResult const DiskSearcher::findFile(std::deque<std::string>& nameBuffer) {
             for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) 
             {
                 Entry& e = dir->getDir()[i];
-                if(e.TYPE != 'F' && strncmp(e.NAME, currentName.c_str(), MAX_NAME_LENGTH - 1) == 0) {
+                if(e.TYPE != 'F' && strncmp(e.NAME, currentName.c_str(), MAX_NAME_LENGTH) == 0) {
                     nameBuffer.pop_front();
                     if(nameBuffer.empty()) return {SUCCESS, dir, i};
                     if(e.TYPE == 'D') {
