@@ -111,7 +111,7 @@ void FrontEnd::printCommandList()
     const int commandWidth = 10;
     const int argWidth = 15;
     const int noteWidth = 20;
-    std::cout << std::left << "\nInput command as one string in the following formats, Command must be capitalized!" << std::endl;
+    std::cout << std::left << "\nInput command as one string in the following formats, Command must be capitalized! One space between args!" << std::endl;
     std::cout << std::setw(commandWidth) << "Command";
     std::cout << std::setw(argWidth) << "Arg Order";
     std::cout << std::setw(noteWidth) << "Special Notes";

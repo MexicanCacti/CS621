@@ -393,9 +393,14 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
     if(base < -1 || base > 1) return BAD_ARG;
     unsigned int numBlocks = _diskManager.countNumBlocks(_lastOpened->LINK);
     unsigned int totalBytes = (numBlocks - 1) * USER_DATA_SIZE;
-
-    unsigned int lastByte = totalBytes + _lastOpened->SIZE - 1;
+    int lastByte = (_lastOpened->SIZE == 0 && numBlocks == 1) ? -1 : totalBytes + _lastOpened->SIZE - 1;
     unsigned int startByte = _filePointer;
+
+    if(lastByte == -1)
+    {
+        _filePointer = 0u;
+        return SUCCESS;
+    }
 
     if(base == -1){
         startByte = 0;
