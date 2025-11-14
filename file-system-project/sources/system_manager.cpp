@@ -125,13 +125,9 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
     if(status == SUCCESS)
     {
         std::cout << "File or Directory with same name already exists! Replacing File/Dir." << std::endl;
-        writeResult = _diskManager.DWRITE(parentDir, entryIndex, fileName.c_str(), type);
-        if(writeResult.status != SUCCESS) return writeResult.status;
-        _lastOpened = writeResult.entry;
-        if(type == 'U') _fileMode = 'O';
-        return writeResult.status;
+        DELETE(nameBuffer);
     }
-    else if(status == NO_FILE_FOUND)
+
     {
         // No file exists with same name
         // Check how many directories of given path don't exist. Will need to create that many directories
@@ -217,7 +213,7 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
     if(_lastOpened && parentDir)
     {
         Entry* toDelete = &parentDir->getDir()[entryIndex];
-        if(_lastOpened->NAME == toDelete->NAME)
+        if(std::strncmp(_lastOpened->NAME, toDelete->NAME, MAX_NAME_LENGTH) == 0)
         {
             isOpenFile = true;
         }
@@ -248,7 +244,7 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
                     }
                     else if(e.TYPE == 'U')
                     {
-                        if(_lastOpened && _lastOpened->NAME == e.NAME)
+                        if(_lastOpened && std::strncmp(_lastOpened->NAME, e.NAME, MAX_NAME_LENGTH) == 0)
                         {
                             _lastOpened = nullptr;
                             _fileMode = 'I';
