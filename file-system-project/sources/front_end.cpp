@@ -126,7 +126,8 @@ void FrontEnd::printCommandList()
         }
         for(unsigned int i = 1 ; i < command._notes.size(); ++i)
         {
-            std::cout << std::string(commandWidth + argWidth, ' ') << std::setw(noteWidth) << command._notes[i] << std::endl;
+            std::cout << std::string(commandWidth + argWidth, ' ') ;
+            std::cout << std::setw(noteWidth) << command._notes[i] << std::endl;
         }
         std::cout << std::endl;
     }
@@ -166,12 +167,14 @@ STATUS_CODE FrontEnd::displayLoadList()
         }
         catch(const std::exception& e)
         {
-            std::cout << "Invalid input, enter a number between [" << 0 << " to " << numSaveFiles << "] to load:\n";
+            std::cout << "Invalid input, enter a number between [" << 0 << " to " ;
+            std::cout << numSaveFiles << "] to load:\n";
             continue;
         }
         if(choice > numSaveFiles)
         {
-            std::cout << "Invalid input, enter a number between [" << 0 << " to " << numSaveFiles << "] to load:\n";
+            std::cout << "Invalid input, enter a number between [" << 0 << " to "; 
+            std::cout << numSaveFiles << "] to load:\n";
         }
         else break;
     }
@@ -200,14 +203,16 @@ void FrontEnd::processFile(std::string& inputDataFile)
         InputResult result = processInput(inputLine);
         if(result._status != SUCCESS)
         {
-            std::cerr << "[ERROR]: Line [" << lineNumber << "]: " << result._errorMessage << std::endl;
+            std::cerr << "[ERROR]: Line [" << lineNumber << "]: "; 
+            std::cerr << result._errorMessage << std::endl;
             continue;
         }
 
         STATUS_CODE status = runInput(result);
         if(status != SUCCESS)
         {
-            std::cerr << "Line [" << lineNumber << "]: Returned " << statusToString(status) << std::endl;
+            std::cerr << "Line [" << lineNumber << "]: Returned "; 
+            std::cerr << statusToString(status) << std::endl;
         }
         if(status == QUIT_PROGRAM) break;
     }
@@ -220,7 +225,8 @@ char FrontEnd::getYesNoInput()
     std::string input = promptInput();
     while(input.empty() || ( toupper(input[0]) != 'Y' && toupper(input[0]) != 'N') )
     {
-        std::cout << "\n[Error]: First character of \'" << input << "\'" << "is not Y or N. Please input 'Y' or 'N'\n";
+        std::cout << "\n[Error]: First character of \'" << input << "\'" ;
+        std::cout << "is not Y or N. Please input 'Y' or 'N'\n";
         input = promptInput();
     }
     return toupper(input[0]);
@@ -285,7 +291,10 @@ InputResult FrontEnd::processInput(std::string& input)
                 DATA.append(tokenString);
             }
             processedInput._stringArg = DATA;
-            if(processedInput._stringArg[0] != '\'' || processedInput._stringArg[processedInput._stringArg.length() - 1] != '\'') return {BAD_ARG, "DATA MUST BE ENCLOSED WITH \'"};
+            if(processedInput._stringArg[0] != '\'' || processedInput._stringArg[processedInput._stringArg.length() - 1] != '\'')
+            {
+                return {BAD_ARG, "DATA MUST BE ENCLOSED WITH \'"};
+            }
             processedInput._stringArg = processedInput._stringArg.substr(1, processedInput._stringArg.size() - 2);
             break;
         case CommandCode::SEEK:

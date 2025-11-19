@@ -15,9 +15,15 @@ class SystemManager{
         Entry* _lastOpened = nullptr;
         char _fileMode = 'I';    
         unsigned int _filePointer = 0;
-        static std::deque<std::string> tokenizeString(const std::string& str, const char& delim);
+        static std::deque<std::string> tokenizeString(
+            const std::string& str, 
+            const char& delim
+        );
         DirectoryResults getDirectories();
-        void outputFileSystem(std::vector<std::string>& dirNames, std::vector<std::vector<EntryInfo>>& directoryEntries);
+        void outputFileSystem(
+            std::vector<std::string>& dirNames, 
+            std::vector<std::vector<EntryInfo>>& directoryEntries
+        );
         SystemManager() = delete;
     public:
         SystemManager(DiskManager& diskManager);

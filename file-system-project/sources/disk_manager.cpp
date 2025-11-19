@@ -19,9 +19,10 @@ void DiskManager::initBlocks()
 
 }
 
-DiskManager::DiskManager(const int& numBlocks, 
-                const int& blockSize, 
-                const int& userDataSize)
+DiskManager::DiskManager(
+    const int& numBlocks, 
+    const int& blockSize, 
+    const int& userDataSize)
     : _numBlocks(numBlocks),
       _blockSize(blockSize),
       _userDataSize(userDataSize),
@@ -55,8 +56,6 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
 
     Block* freeBlock = _blockMap[freeBlockNumber];
 
-    //std::cout << "[DEBUG] allocateBlock requested type=" << type << " freeHead=" << rootBlock->getFreeBlock() << "\n";
-
     unsigned int nextFreeBlockNumber = freeBlock->getNextBlock();
     rootBlock->setFreeBlock(nextFreeBlockNumber);
     if(nextFreeBlockNumber != 0) _blockMap[nextFreeBlockNumber]->setPrevBlock(0);
@@ -71,7 +70,6 @@ std::pair<STATUS_CODE, unsigned int> DiskManager::allocateBlock(const char& type
     }
     
     --_numFreeBlocks;
-    //std::cout << "[DEBUG] allocateBlock returning block=" << freeBlockNumber << " nextFree=" << rootBlock->getFreeBlock() << "\n";
     return {SUCCESS, freeBlockNumber};
 }
 
@@ -108,7 +106,7 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         {
             oldFreeNumber = 0;
         }
-        //std::cout << "[DEBUG] freeBlock freeing block=" << currentBlockNumber << " chainedNext=" << chainedBlockNumber << " oldFreeHead=" << oldFreeNumber << "\n";
+
         currentBlock->setNextBlock(oldFreeNumber);
         currentBlock->setPrevBlock(0);
 
@@ -118,7 +116,6 @@ void DiskManager::freeBlock(const unsigned int& blockNumber)
         }
         ++_numFreeBlocks;
         rootBlock->setFreeBlock(currentBlockNumber);
-        //std::cout << "[DEBUG] freeBlock newFreeHead=" << rootBlock->getFreeBlock() << " numFree=" << _numFreeBlocks << "\n";
         currentBlockNumber = chainedBlockNumber;
     }
 }
@@ -197,7 +194,10 @@ Block* DiskManager::DREAD(const unsigned int& blockNumber)
     return _blockMap[blockNumber];
 }
 
-std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes)
+std::pair<STATUS_CODE, std::string> DiskManager::DREAD(
+    const unsigned int& blockNumber, 
+    const int& bytes
+)
 {
     if(!inBounds(blockNumber)) return {STATUS_CODE::BOUNDS_ERROR, ""};
 
@@ -211,7 +211,11 @@ std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& block
     return {SUCCESS, readData};
 }
 
-std::pair<STATUS_CODE, std::string> DiskManager::DREAD(const unsigned int& blockNumber, const int& bytes, const int& startByte)
+std::pair<STATUS_CODE, std::string> DiskManager::DREAD(
+    const unsigned int& blockNumber, 
+    const int& bytes, 
+    const int& startByte
+)
 {
      if(!inBounds(blockNumber)) return {STATUS_CODE::BOUNDS_ERROR, ""};
 
@@ -235,21 +239,42 @@ STATUS_CODE DiskManager::DWRITE(unsigned int blockNum, Block* blockPtr)
 }
 
 // Add/update entry
-WriteResult DiskManager::DWRITE(DirectoryBlock* directory, const unsigned int& entryIndex, const char* name, char type)
+WriteResult DiskManager::DWRITE(
+    DirectoryBlock* directory, 
+    const unsigned int& entryIndex, 
+    const char* name, char type
+)
 {
     freeBlock(directory->getDir()[entryIndex].LINK);
     auto [status, allocatedBlock] = allocateBlock(type);
     if(status != SUCCESS) return {status, nullptr, type};
-    return _diskWriter->addEntryToDirectory(directory, entryIndex, name, type, allocatedBlock, 0);
+    return _diskWriter->addEntryToDirectory(
+        directory, 
+        entryIndex, 
+        name, 
+        type, 
+        allocatedBlock, 
+        0
+    );
 }
 
 // Write user data
-STATUS_CODE DiskManager::DWRITE(UserDataBlock* dataBlock, const char* buffer, unsigned int nBytes, unsigned int startByte, unsigned int bufferStart)
+STATUS_CODE DiskManager::DWRITE(
+    UserDataBlock* dataBlock, 
+    const char* buffer, 
+    unsigned int nBytes, 
+    unsigned int startByte, 
+    unsigned int bufferStart
+)
 {
     return _diskWriter->writeToBlock(dataBlock, buffer, nBytes, startByte, bufferStart);
 }
 
-WriteResult DiskManager::DWRITE(std::deque<std::string>& existingPath, std::deque<std::string>& nameBufferQueue, const char& type)
+WriteResult DiskManager::DWRITE(
+    std::deque<std::string>& existingPath, 
+    std::deque<std::string>& nameBufferQueue, 
+    const char& type
+)
 {
     return _diskWriter->createToFile(existingPath, nameBufferQueue, type);
 }
