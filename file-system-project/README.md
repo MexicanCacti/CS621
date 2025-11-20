@@ -1,4 +1,5 @@
 To run tests, run these commands from the root folder [FILE-SYSTEM-PROJECT]
+To compile everything (Tests and Program) simply run ./build.bash
 
 [TEST-FILES]
 SEEK:
