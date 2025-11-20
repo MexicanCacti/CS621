@@ -1,6 +1,7 @@
 #pragma once
 #include "block.hpp"
 #include "../utils/entry.hpp"
+#include <cstring>
 
 class DirectoryBlock : public Block {
     private:

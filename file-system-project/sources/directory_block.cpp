@@ -1,5 +1,4 @@
 #include "../headers/directory_block.hpp"
-#include <cstring>
 
 STATUS_CODE DirectoryBlock::addEntry(
     const char* name, 

@@ -17,7 +17,6 @@ std::deque<std::string> SystemManager::tokenizeString(
         nameBufferQueue.push_back(str.substr(startPos, splitPos - startPos));
         startPos = splitPos + 1;
     }
-
     return nameBufferQueue;
 }
 
@@ -27,7 +26,6 @@ DirectoryResults SystemManager::getDirectories()
     std::queue<std::string> dirNames;
     std::queue<std::pair<unsigned int, std::string>> dirQueue;
     dirQueue.push({0, "ROOT"});
-
     while(!dirQueue.empty()){
         unsigned int queueSize = dirQueue.size();
         for(unsigned int i = 0 ; i < queueSize; ++i)
@@ -83,7 +81,8 @@ void SystemManager::outputFileSystem(
     std::cout << std::setw(entryWidth) << "Entry"; 
     std::cout << std::setw(typeWidth) << "Type";
     std::cout << std::setw(fileLengthWidth) << "Length (Bytes)" << std::endl;
-    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-') << std::endl;
+    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-'); 
+    std::cout << std::endl;
     for (unsigned int i = 0; i < numDirs; ++i)
     {
         std::string& dirName = dirNames[i];
@@ -113,7 +112,8 @@ void SystemManager::outputFileSystem(
             }
         }
     }
-    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-') << std::endl;
+    std::cout << std::string(dirWidth + entryWidth + typeWidth + fileLengthWidth, '-'); 
+    std::cout << std::endl;
     std::cout << std::setw(freeBlockWidth) << "Free Block Count";
     std::cout << std::setw(dirCountWidth) << "Directory Block Count";
     std::cout << std::setw(userCountWidth) << "User Data Block Count" << std::endl;
@@ -121,7 +121,6 @@ void SystemManager::outputFileSystem(
     std::cout << std::setw(dirCountWidth) << std::to_string(numDirs);
     std::cout << std::setw(userCountWidth) << std::to_string(numUserBlocks) << std::endl;
 }
-
 
 SystemManager::SystemManager(DiskManager& diskManager) : _diskManager(diskManager)
 {
@@ -140,7 +139,6 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
     STATUS_CODE status = searchResult.statusCode;
     DirectoryBlock* parentDir = searchResult.directory;
     unsigned int entryIndex = searchResult.entryIndex;
-
     WriteResult writeResult;
     // Found file with same name in last directory of given path
     if(status == SUCCESS)
@@ -149,7 +147,6 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
         std::cout << std::endl;
         DELETE(nameBuffer);
     }
-
     {
         // No file exists with same name
         // Check how many directories of given path don't exist. 
@@ -177,26 +174,19 @@ STATUS_CODE SystemManager::CREATE(const char& type, const std::string& nameBuffe
                 }
             }
         }
-
         int numNeededFreeBlocks = needToCreate.size();
         if(numNeededFreeBlocks > _diskManager.getNumFreeBlocks()) return OUT_OF_MEMORY;
-        
         writeResult = _diskManager.DWRITE(existingPathBufferQueue, needToCreate, type);
-
         if(writeResult.status != SUCCESS) return writeResult.status;
-
         if(writeResult.entry->TYPE == 'U')
         {
             _lastOpened = writeResult.entry;
             _filePointer = 0;
             _fileMode = 'O';            
         }
-
         return writeResult.status;
     }
-
     return status;
-    
 }
 
 STATUS_CODE SystemManager::OPEN(const char& mode, const std::string& nameBuffer)
@@ -212,9 +202,11 @@ STATUS_CODE SystemManager::OPEN(const char& mode, const std::string& nameBuffer)
     _lastOpened = &parentDir->getDir()[entryIndex];
     _fileMode = mode;
     if(mode == 'I' || mode == 'U') _filePointer = 0;
-    else{
+    else
+    {
         //_lastOpened SIZE should have Bytes used in last block!
-        _filePointer = _diskManager.countNumBlocks(_lastOpened->LINK) * 504 - (504 - _lastOpened->SIZE);
+        _filePointer = _diskManager.countNumBlocks(_lastOpened->LINK) 
+            * 504 - (504 - _lastOpened->SIZE);
     }
 
     return SUCCESS;
@@ -255,7 +247,9 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
         {
             unsigned int dirBlockNum = dirQueue.front();
             dirQueue.pop();
-            DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(dirBlockNum));
+            DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(
+                _diskManager.DREAD(dirBlockNum)
+            );
             if(!dirBlock) return CASTING_ERROR;
             for(dirBlock;
                 dirBlock != nullptr;
@@ -275,7 +269,10 @@ STATUS_CODE SystemManager::DELETE(const std::string& nameBuffer)
                     }
                     else if(e.TYPE == 'U')
                     {
-                        if(_lastOpened && std::strncmp(_lastOpened->NAME, e.NAME, MAX_NAME_LENGTH) == 0)
+                        if(_lastOpened && std::strncmp(
+                            _lastOpened->NAME, 
+                            e.NAME, 
+                            MAX_NAME_LENGTH) == 0)
                         {
                             _lastOpened = nullptr;
                             _fileMode = 'I';
@@ -322,7 +319,6 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
         dataBlock = dynamic_cast<UserDataBlock*>(nextBlock);
     }
     unsigned int readStart = pointerOffset;
-
     std::pair<STATUS_CODE, std::string> readBuffer;
     while(dataBlock && readBytes > 0)
     {
@@ -351,15 +347,14 @@ std::pair<STATUS_CODE, std::string> SystemManager::READ(const unsigned int& numB
 
 STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBuffer)
 {
-
-
     if(!_lastOpened) return NO_FILE_OPEN;
     if(_fileMode != 'O' && _fileMode != 'U') return BAD_FILE_MODE;
     unsigned int pointerBlock = _filePointer / USER_DATA_SIZE;
     unsigned int pointerOffset = _filePointer % USER_DATA_SIZE;
-    
     unsigned int writeBlock = _lastOpened->LINK;
-    UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(writeBlock));
+    UserDataBlock* currentBlock = dynamic_cast<UserDataBlock*>(
+        _diskManager.DREAD(writeBlock)
+    );
     if(!currentBlock) return CASTING_ERROR;
 
     for(unsigned int i = 0 ; i < pointerBlock; ++i)
@@ -369,14 +364,12 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
         currentBlock = dynamic_cast<UserDataBlock*>(_diskManager.DREAD(writeBlock));
         if(!currentBlock) return CASTING_ERROR;
     }
-
     std::string writeData = writeBuffer;
     if(writeData.size() < numBytes)
     {
         unsigned int excessBytes = numBytes - writeData.size();
         writeData.append(excessBytes, ' ');
     }
-
     unsigned int bytesToWrite = numBytes;
     unsigned int bufferStart = 0;
     unsigned int writeStart = pointerOffset;
@@ -395,7 +388,6 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
             bufferStart
         );
         if(status != SUCCESS) return status;
-
         bytesToWrite -= writeAmount;
         bufferStart += writeAmount;
         writeStart = 0;
@@ -403,9 +395,9 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
         {
             if(currentBlock->getNextBlock() == 0)
             {
-                // Note: Create function that will auto chain the new block? DWRITE overload?
                 auto [allocStatus, newBlock] = _diskManager.allocateBlock('U');
-                // Can't allocate new blocks, fit as much of the data as can fit in final block
+                // Can't allocate new blocks, 
+                //  fit as much of the data as can fit in final block
                 if(allocStatus == OUT_OF_MEMORY)
                 {
                     writeStatus = OUT_OF_MEMORY;
@@ -426,7 +418,10 @@ STATUS_CODE SystemManager::WRITE(const int& numBytes, const std::string& writeBu
             }
         }
     }
-    if(currentBlock->getNextBlock() == 0) _lastOpened->SIZE = currentBlock->getUserDataSize();
+    if(currentBlock->getNextBlock() == 0)
+    {
+        _lastOpened->SIZE = currentBlock->getUserDataSize();
+    }
     return writeStatus;
 }
 
@@ -437,7 +432,8 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
     if(base < -1 || base > 1) return BAD_ARG;
     unsigned int numBlocks = _diskManager.countNumBlocks(_lastOpened->LINK);
     unsigned int totalBytes = (numBlocks - 1) * USER_DATA_SIZE;
-    int lastByte = (_lastOpened->SIZE == 0 && numBlocks == 1) ? -1 : totalBytes + _lastOpened->SIZE - 1;
+    int lastByte = (_lastOpened->SIZE == 0 && numBlocks == 1) ? -1 
+        : totalBytes + _lastOpened->SIZE - 1;
     unsigned int startByte = _filePointer;
 
     if(lastByte == -1)
@@ -453,10 +449,8 @@ STATUS_CODE SystemManager::SEEK(const int& base, const int& offset)
         startByte = lastByte + 1; // Last Byte is EOF
     }
     int seekByte = startByte + offset;
-
     if(seekByte < 0) seekByte = 0;
     if(static_cast<unsigned int>(seekByte) > lastByte) seekByte = lastByte + 1;
-
     _filePointer = seekByte;
     return SUCCESS;
 }
@@ -471,12 +465,9 @@ STATUS_CODE SystemManager::displayFileSystem()
     }
     std::queue<unsigned int>& dirOrder = directoryResults.directoryOrder;
     std::queue<std::string>& dirNames = directoryResults.directoryName;
-
     unsigned int numDirectories = dirOrder.size();
-
     std::vector<std::string> directoryNames(numDirectories);
     std::vector<std::vector<EntryInfo>> directoryEntries(numDirectories);
-
     unsigned int index = 0;
     while(!dirOrder.empty())
     {
@@ -486,13 +477,14 @@ STATUS_CODE SystemManager::displayFileSystem()
         dirNames.pop();
         directoryNames[index] = dirName;
         std::vector<EntryInfo>& entryList = directoryEntries[index++];
-        DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(_diskManager.DREAD(blockNum));
+        DirectoryBlock* dirBlock = dynamic_cast<DirectoryBlock*>(
+            _diskManager.DREAD(blockNum)
+        );
         if(!dirBlock)
         {
             std::cout << "[ERROR]: COULD NOT GET DIRECTORY BLOCK " << blockNum << std::endl;
             continue;
         }
-
         auto dir = dirBlock->getDir();
         for(unsigned int i = 0; i < MAX_DIRECTORY_ENTRIES; ++i) {
             Entry& e = dir[i];
@@ -522,14 +514,13 @@ void SystemManager::SAVE(const std::string& fileName)
     saveFile.open(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
     if(!saveFile.is_open() || saveFile.fail())
     {
-        std::cerr << "[SAVE] Could not open or write to save file: " << fileName << std::endl;
+        std::cerr << "[SAVE] Could not open or write to save file: " << fileName; 
+        std::cout << std::endl;
         return;
     }
     _diskManager.DSAVE(saveFile);
-
     saveFile.flush();
     saveFile.close();
-
     return;
 }
 

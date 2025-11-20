@@ -1,6 +1,6 @@
 #include "../headers/disk_writer.hpp"
 #include "../headers/disk_manager.hpp"
-#include <iostream>
+
 STATUS_CODE const DiskWriter::writeToBlock(
     UserDataBlock* dataBlock, 
     const char* data, 
@@ -177,6 +177,7 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
 
     blockQueue.push({0, 'D'});
 
+    // BFS through the file system blocks, saving entries as we go
     while(!blockQueue.empty())
     {
         unsigned int queueSize = blockQueue.size();
@@ -192,7 +193,6 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
                 );
                 if(!dirBlock) continue;
 
-
                 for(dirBlock;
                     dirBlock != nullptr;
                     dirBlock = (blockNum != 0) 
@@ -207,8 +207,7 @@ void DiskWriter::saveFileSystem(std::ofstream& out)
                         Entry& e = dir[i];
                         if(e.TYPE == 'D')
                         {
-                            DirectoryBlock* dEntry = 
-                            dynamic_cast<DirectoryBlock*>(
+                            DirectoryBlock* dEntry = dynamic_cast<DirectoryBlock*>(
                                 _diskManager.DREAD(e.LINK)
                             );
                             blockEntries[blockNum].push_back(
